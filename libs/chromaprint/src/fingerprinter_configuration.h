@@ -10,7 +10,7 @@
 
 namespace chromaprint {
 
-static const int DEFAULT_SAMPLE_RATE = 11025;
+static const int DEFAULT_SAMPLE_RATE = 48000;
 
 class FingerprinterConfiguration
 {
