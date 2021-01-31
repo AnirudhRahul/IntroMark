@@ -28,7 +28,7 @@ int* create_lcp_arr(int *suffixArr, int* rankArr, int* arr, int size){
     return lcp;
 }
 
-tuple<int, int, int> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA){
+tuple<int, int, int, int> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA){
     int max = 0;
     int maxIndex = 0;
     int startA, startB, len=0;
@@ -51,7 +51,7 @@ tuple<int, int, int> longest_common_substring(int *suffixArr, int* lcpArr, int s
             max = lcpArr[i];
     }
 
-    return make_tuple(startA,startB,max);
+    return make_tuple(startA, startB, len, max);
 }
 
 

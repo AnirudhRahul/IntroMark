@@ -6,7 +6,8 @@
 
 using namespace chromaprint;
 
-static const int kDefaultFrameSize = 3000;
+static const int mult = 16;
+static const int kDefaultFrameSize = 48000*mult;
 static const int kDefaultFrameOverlap = kDefaultFrameSize - kDefaultFrameSize / 3;
 
 static const int kChromaFilterSize = 5;
@@ -103,10 +104,22 @@ FingerprinterConfigurationTest4::FingerprinterConfigurationTest4()
 
 FingerprinterConfigurationTest5::FingerprinterConfigurationTest5()
 {
-	set_classifiers(kClassifiersTest2, 16);
+	bool interpolate = true;
+	if(interpolate){
+		set_classifiers(kClassifiersTest3, 16);
+	}
+	else{
+		set_classifiers(kClassifiersTest2, 16);
+	}
+	set_interpolate(interpolate);
 	set_filter_coefficients(kChromaFilterCoefficients, kChromaFilterSize);
-	set_interpolate(true);
 	set_frame_size(kDefaultFrameSize);
-	set_frame_overlap(kDefaultFrameSize / 2);
+	set_frame_overlap(kDefaultFrameSize - 3000);
+	// set_frame_overlap(kDefaultFrameSize - 2000);
+	// set_frame_overlap(kDefaultFrameSize - 1500);
+	// set_frame_overlap(kDefaultFrameSize - 1000);
+	// set_frame_overlap(kDefaultFrameSize - 500);
+	// set_frame_overlap(kDefaultFrameSize - 10);
+
 }
 

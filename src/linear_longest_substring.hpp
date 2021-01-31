@@ -12,6 +12,6 @@ int* create_rank_arr(int *suffixArr, int size);
 int* create_lcp_arr(int *suffixArr, int* rankArr, int* arr, int size);
 
 // startA, startB, len
-std::tuple<int, int, int> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA);
+std::tuple<int, int, int, int> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA);
 
 #endif
