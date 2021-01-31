@@ -72,7 +72,7 @@ Audio audioFileToArr(const char * path){
         }
     }
 
-    return (struct Audio){arr, audioFile.getSampleRate(), samples, channels, samples*channels};
+    return (struct Audio){arr, (int)audioFile.getSampleRate(), samples, channels, samples*channels};
 }
 
 void freeAudio(Audio input){
