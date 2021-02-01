@@ -17,6 +17,11 @@ git clone --recursive https://github.com/quantumsheep/chromaprint-boilerplate.gi
 # How to compile
 If you don't have the `build` directory, you need to create it (`mkdir build`).
 
+Optional this project can get a 2-3x speedup if you install fftw3.
+On ubuntu you can simply use:
+
+``` apt-get install libfftw3-dev ```
+
 In the `build` directory do those commands that will compile the sources with chromaprint linked:
 ```bash
 cmake ..

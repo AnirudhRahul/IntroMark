@@ -82,8 +82,8 @@ void freeAudio(Audio input){
 int main()
 {
     ChromaprintContext *ctx;
-    const char* path1 = "../test_audio/normal_ep1.wav";
-    const char* path2 = "../test_audio/normal_ep2.wav";
+    const char* path1 = "../test_audio/short_ep1.wav";
+    const char* path2 = "../test_audio/short_ep2.wav";
 
     Audio audioList[] = {audioFileToArr(path1), audioFileToArr(path2)};
     cout << "Read audio\n";
@@ -101,6 +101,7 @@ int main()
             sample_rate = cur.sample_rate;
             delay = chromaprint_get_delay(ctx);
             item_duration = chromaprint_get_item_duration(ctx);
+            cout << "DELAY SEC " << (double) sample_rate / delay << endl;
         }
         else{
             ASSERT(sample_rate == cur.sample_rate, "Sample rates are different\n");
@@ -168,19 +169,19 @@ int main()
     cout << endl << "Common Substrings found" << endl;
     cout << "Length in sec: " << toSec(len) << endl;
     cout << toSec(startA) << " to " << toSec(startA + len) << endl;
-    cout << toSec(startB) << " to " << toSec(startB + len) << endl;
+    cout << toSec(startB - sizeA - 1) << " to " << toSec(startB + len - sizeA - 1) << endl;
     cout << endl;
 
     int endA = startA + len; int endB = startB + len;
     const int mismatch_threshold = 1;
     int mismatch_count=0;
     while(startA>=0 && startB>sizeA){
-        if(compressed[startA]!=compressed[startB]){
+        if(abs(compressed[startA]-compressed[startB])>1){
             mismatch_count++;
         }
-        else{
-            mismatch_count=std::max(0, mismatch_count-1);
-        }
+        // else{
+        //     mismatch_count=std::max(0, mismatch_count-1);
+        // }
         if(mismatch_count > mismatch_threshold){
             break;
         }
@@ -194,12 +195,12 @@ int main()
     endA-=10; endB-=10;
 
     while(endA<sizeA && endB<combinedLen){
-        if(compressed[endA]!=compressed[endB]){
+        if(abs(compressed[endA]-compressed[endB])>1){
             mismatch_count++;
         }
-        else{
-            mismatch_count=std::max(0, mismatch_count-1);
-        }
+        // else{
+        //     mismatch_count=std::max(0, mismatch_count-1);
+        // }
         if(mismatch_count > mismatch_threshold){
             break;
         }
@@ -209,6 +210,7 @@ int main()
     while(compressed[endA]!=compressed[endB]){
         endA--; endB--;
     }
+    cout  << compressed[endA] << " comp " << compressed[endB] << endl;
     // cout << "END: " << toSec(sizeA) << endl;
     cout << toSec(startA) << " to " << toSec(endA) + delay_sec << endl;
     // cout << "END: " << toSec(combinedLen) << endl;
@@ -217,7 +219,17 @@ int main()
 
     cout << "NEW LEN: " << toSec(endA-startA) + delay_sec << endl;
 
-    cout << "DELAY: " << (double) delay / sample_rate << endl;
+    cout << "DELAY: " << delay_sec << endl;
+
+    cout << "SINGLE SAMPLE LENGTH: " << toSec(1) << endl;
+    for(int i=startA-10; i<endA; i++){
+        cout << compressed[i] << " ";
+    }
+    cout << "\n\n";
+    for(int i=startB-10; i<endB; i++){
+        cout << compressed[i] << " ";
+    }
+    cout << "\n\n";
 
     // O(n) double check
     // int foundIndex = -1;
