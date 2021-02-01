@@ -119,7 +119,6 @@ int main()
             sample_rate = cur.sample_rate;
             delay = chromaprint_get_delay(ctx);
             item_duration = chromaprint_get_item_duration(ctx);
-            cout << "DELAY SEC " << (double) sample_rate / delay << endl;
         }
         else{
             ASSERT(sample_rate == cur.sample_rate, "Sample rates are different\n");
