@@ -31,7 +31,7 @@ struct Audio{
     int length;
 };
 
-tuple<int*, int> compress(uint32_t* arr, int size){
+tuple<int*, uint32_t*, int> compress(uint32_t* arr, int size){
     uint32_t* sorted = new uint32_t[size];
     std::copy_n(arr, size, sorted);
     sort(sorted, sorted+size);
@@ -51,8 +51,26 @@ tuple<int*, int> compress(uint32_t* arr, int size){
         res[i] = rankMap[arr[i]];
     }
     delete[] arr;
+
+    uint32_t* rank_to_val = new uint32_t[rank];
+    for (auto const& x : rankMap){
+        rank_to_val[x.second] = x.first;
+    }
+
     rankMap.clear();
-    return std::make_tuple(res, rank);
+    return std::make_tuple(res, rank_to_val, rank);
+}
+
+double compare_gray_codes(uint32_t a, uint32_t b){
+    uint32_t c = a ^ b;
+    double matches = 0;
+    for(int i=0; i<16; i++){
+        if( (c&3) == 0)
+            matches+=1;
+        c>>=2;
+    }
+
+    return matches/16;
 }
 
 Audio audioFileToArr(const char * path){
@@ -82,8 +100,8 @@ void freeAudio(Audio input){
 int main()
 {
     ChromaprintContext *ctx;
-    const char* path1 = "../test_audio/short_ep1.wav";
-    const char* path2 = "../test_audio/short_ep2.wav";
+    const char* path1 = "../test_audio/normal_ep1.wav";
+    const char* path2 = "../test_audio/normal_ep2.wav";
 
     Audio audioList[] = {audioFileToArr(path1), audioFileToArr(path2)};
     cout << "Read audio\n";
@@ -122,8 +140,8 @@ int main()
     std::copy(audioHashes[1], audioHashes[1] + hashSizes[1], merged + hashSizes[0] + 1);
     delete[] audioHashes[1];
 
-    int max; int* compressed;
-    std::tie(compressed, max) = compress(merged, hashSizes[0]+hashSizes[1]+1);
+    int max; int* compressed; uint32_t* rank_to_val;
+    std::tie(compressed, rank_to_val, max) = compress(merged, hashSizes[0]+hashSizes[1]+1);
     // Sentinel in between the 2 strings
     compressed[hashSizes[0]] = 0;
 
@@ -158,6 +176,10 @@ int main()
         return (double) in * item_duration / sample_rate;
     };
 
+    auto compareIndices = [compressed, rank_to_val](int a, int b) {
+        return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
+    };
+
     // cout << "ITEM DUR: " << toSec(1) << endl;
     // cout << "Delay SEC: " << (double) delay / sample_rate << endl;
     // cout << "Common SEC: " << toSec(len) << endl;
@@ -176,7 +198,7 @@ int main()
     const int mismatch_threshold = 1;
     int mismatch_count=0;
     while(startA>=0 && startB>sizeA){
-        if(abs(compressed[startA]-compressed[startB])>1){
+        if(compareIndices(startA, startB)<0.8){
             mismatch_count++;
         }
         // else{
@@ -195,7 +217,7 @@ int main()
     endA-=10; endB-=10;
 
     while(endA<sizeA && endB<combinedLen){
-        if(abs(compressed[endA]-compressed[endB])>1){
+        if(compareIndices(endA, endB)<0.8){
             mismatch_count++;
         }
         // else{
