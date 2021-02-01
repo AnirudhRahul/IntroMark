@@ -168,8 +168,8 @@ int main()
     cout << "Max lcp in sec: " << toSec(maxLCP) << endl;
     cout << endl << "Common Substrings found" << endl;
     cout << "Length in sec: " << toSec(len) << endl;
-    cout << toSec(startA) << " to " << toSec(startA + len) << endl;
-    cout << toSec(startB - sizeA - 1) << " to " << toSec(startB + len - sizeA - 1) << endl;
+    cout << toSec(startA) << " to " << toSec(startA + len) + delay_sec << endl;
+    cout << toSec(startB - sizeA - 1) << " to " << toSec(startB + len - sizeA - 1) + delay_sec << endl;
     cout << endl;
 
     int endA = startA + len; int endB = startB + len;
