@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <map>
 
-using std::cout, std::endl, std::sort, std::tuple;
+using std::cout; using std::endl; using std::sort; using std::tuple;
 
 // Assert macro from https://stackoverflow.com/questions/3767869/adding-message-to-assert
 #ifndef NDEBUG
@@ -26,7 +26,6 @@ using std::cout, std::endl, std::sort, std::tuple;
 struct Audio{
     int16_t* arr;
     int sample_rate;
-    int samples;
     int channels;
     int length;
 };
@@ -90,11 +89,28 @@ Audio audioFileToArr(const char * path){
         }
     }
 
-    return (struct Audio){arr, (int)audioFile.getSampleRate(), samples, channels, samples*channels};
+    return (struct Audio){arr, (int)audioFile.getSampleRate(), channels, samples*channels};
 }
 
 void freeAudio(Audio input){
     delete[] input.arr;
+}
+
+int getCommonStart(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
+    for(int i=0; i<std::min(sizeA, sizeB); i++){
+        if(a[i]!=b[i])
+            return i/channels;
+    }
+    return -1;
+}
+
+int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
+    int tailA = sizeA-1; int tailB = sizeB-1;
+    int len = 0;
+    while(tailA>=0 && tailB>=0 && a[tailA] == b[tailB]){
+        tailA--; tailB--; len++;
+    }
+    return len/channels;
 }
 
 int main()
@@ -102,26 +118,37 @@ int main()
     ChromaprintContext *ctx;
     const char* path1 = "../test_audio/normal_ep1.wav";
     const char* path2 = "../test_audio/normal_ep2.wav";
-
     Audio audioList[] = {audioFileToArr(path1), audioFileToArr(path2)};
     cout << "Read audio\n";
+    int channels = audioList[0].channels;
+    ASSERT(channels == audioList[1].channels, "Tracks must have the same number of channels");
+    int startShift = getCommonStart(audioList[0].arr, audioList[1].arr, audioList[0].length, audioList[1].length, channels);
+    ASSERT(startShift!=-1, "Audio files are the same");
+    int endShift = getCommonEnd(audioList[0].arr, audioList[1].arr, audioList[0].length, audioList[1].length, channels);
+    int sample_rate = audioList[0].sample_rate;
+    ASSERT(sample_rate == audioList[1].sample_rate, "Tracks must have the same sample rate");
+
+    double startShiftsec = (double) startShift / (sample_rate);
+    cout << "START Shift " << startShiftsec << endl;
+    double endShiftsec = (double) endShift / (sample_rate);
+    cout << "END Shift " << endShiftsec << endl;
+    cout << "CHANNELS: " << channels << endl;
+
     uint32_t* audioHashes[2];
     int hashSizes[2];
-    int delay, item_duration, sample_rate;
+    int delay, item_duration;
     int index = 0;
     for(Audio cur : audioList){
         ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5);
         chromaprint_start(ctx, cur.sample_rate, cur.channels);
-        chromaprint_feed(ctx, cur.arr, cur.length);
+        chromaprint_feed(ctx, (cur.arr + startShift*channels), cur.length - (startShift+endShift)*channels);
         freeAudio(cur);
         chromaprint_finish(ctx);
         if(index==0){
-            sample_rate = cur.sample_rate;
             delay = chromaprint_get_delay(ctx);
             item_duration = chromaprint_get_item_duration(ctx);
         }
         else{
-            ASSERT(sample_rate == cur.sample_rate, "Sample rates are different\n");
             ASSERT(delay == chromaprint_get_delay(ctx), "Delay Mismatch\n");
             ASSERT(item_duration == chromaprint_get_item_duration(ctx), "Item Duration Mismatch\n");
         }
@@ -130,9 +157,11 @@ int main()
         chromaprint_free(ctx);
         index++;
     }
+
     cout << "Chromaprint done!\n";
 
     int combinedLen = hashSizes[0] + hashSizes[1] + 1;
+    int offset = hashSizes[0] + 1;
     uint32_t * merged = new uint32_t[combinedLen];
     std::copy(audioHashes[0], audioHashes[0] + hashSizes[0], merged);
     delete[] audioHashes[0];
@@ -140,11 +169,20 @@ int main()
     delete[] audioHashes[1];
 
     int max; int* compressed; uint32_t* rank_to_val;
-    std::tie(compressed, rank_to_val, max) = compress(merged, hashSizes[0]+hashSizes[1]+1);
+    std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
     // Sentinel in between the 2 strings
     compressed[hashSizes[0]] = 0;
-
     cout << "Finished compressing\n";
+
+    for(int i=0; i<combinedLen-offset; i++){
+        
+        if(compare_gray_codes(rank_to_val[compressed[i]], rank_to_val[compressed[i+offset]])<0.8){
+            cout << i << " Matching indices at the start of both videos\n";
+            cout << (double) i * item_duration / sample_rate << " seconds\n";
+            break;
+        }
+
+    }
 
     int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
 
@@ -186,6 +224,8 @@ int main()
 
     double delay_sec = (double) delay / sample_rate;
     int sizeA = hashSizes[0];
+    cout << "ENDOH: " << toSec(sizeA) + delay_sec << endl;
+
     cout << "Max lcp in sec: " << toSec(maxLCP) << endl;
     cout << endl << "Common Substrings found" << endl;
     cout << "Length in sec: " << toSec(len) << endl;
@@ -243,13 +283,13 @@ int main()
     cout << "DELAY: " << delay_sec << endl;
 
     cout << "SINGLE SAMPLE LENGTH: " << toSec(1) << endl;
-    for(int i=startA-10; i<endA; i++){
-        cout << compressed[i] << " ";
-    }
-    cout << "\n\n";
-    for(int i=startB-10; i<endB; i++){
-        cout << compressed[i] << " ";
-    }
+    // for(int i=startA-10; i<endA; i++){
+    //     cout << compressed[i] << " ";
+    // }
+    // cout << "\n\n";
+    // for(int i=startB-10; i<endB; i++){
+    //     cout << compressed[i] << " ";
+    // }
     cout << "\n\n";
 
     // O(n) double check
