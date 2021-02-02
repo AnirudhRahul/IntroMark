@@ -23,11 +23,16 @@ using std::cout; using std::endl; using std::sort; using std::tuple;
 #   define ASSERT(condition, message) do { } while (false)
 #endif
 
-struct Audio{
+struct RawAudio{
     int16_t* arr;
     int sample_rate;
     int channels;
     int length;
+};
+
+struct ChromaArr{
+    uint32_t* arr;
+    int size;
 };
 
 tuple<int*, uint32_t*, int> compress(uint32_t* arr, int size){
@@ -72,7 +77,7 @@ double compare_gray_codes(uint32_t a, uint32_t b){
     return matches/16;
 }
 
-Audio audioFileToArr(const char * path){
+RawAudio audioFileToArr(const char * path){
     AudioFile<float> audioFile;
     audioFile.load(path);
     
@@ -89,10 +94,10 @@ Audio audioFileToArr(const char * path){
         }
     }
 
-    return (struct Audio){arr, (int)audioFile.getSampleRate(), channels, samples*channels};
+    return (struct RawAudio){arr, (int)audioFile.getSampleRate(), channels, samples*channels};
 }
 
-void freeAudio(Audio input){
+void freeAudio(RawAudio input){
     delete[] input.arr;
 }
 
@@ -115,30 +120,34 @@ int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
 
 int main()
 {
-    ChromaprintContext *ctx;
     const char* path1 = "../test_audio/normal_ep1.wav";
     const char* path2 = "../test_audio/normal_ep2.wav";
-    Audio audioList[] = {audioFileToArr(path1), audioFileToArr(path2)};
+    RawAudio audio1 = audioFileToArr(path1);
+    RawAudio audio2 = audioFileToArr(path2);
     cout << "Read audio\n";
-    int channels = audioList[0].channels;
-    ASSERT(channels == audioList[1].channels, "Tracks must have the same number of channels");
-    int startShift = getCommonStart(audioList[0].arr, audioList[1].arr, audioList[0].length, audioList[1].length, channels);
+
+    int channels = audio1.channels;
+    ASSERT(channels == audio2.channels, "Tracks must have the same number of channels");
+    int sample_rate = audio1.sample_rate;
+    ASSERT(sample_rate == audio2.sample_rate, "Tracks must have the same sample rate");
+
+    int startShift = getCommonStart(audio1.arr, audio2.arr, audio1.length, audio2.length, channels);
     ASSERT(startShift!=-1, "Audio files are the same");
-    int endShift = getCommonEnd(audioList[0].arr, audioList[1].arr, audioList[0].length, audioList[1].length, channels);
-    int sample_rate = audioList[0].sample_rate;
-    ASSERT(sample_rate == audioList[1].sample_rate, "Tracks must have the same sample rate");
-
-    double startShiftsec = (double) startShift / (sample_rate);
+    int endShift = getCommonEnd(audio1.arr, audio2.arr, audio1.length, audio2.length, channels);
+    double startShiftsec = (double) startShift/sample_rate;
     cout << "START Shift " << startShiftsec << endl;
-    double endShiftsec = (double) endShift / (sample_rate);
+    double endShiftsec = (double) endShift/sample_rate;
     cout << "END Shift " << endShiftsec << endl;
-    cout << "CHANNELS: " << channels << endl;
 
-    uint32_t* audioHashes[2];
-    int hashSizes[2];
+
+
+    ChromaArr chroma[2];
+    RawAudio audioList[2] = {audio1, audio2};
     int delay, item_duration;
+
+    ChromaprintContext *ctx;
     int index = 0;
-    for(Audio cur : audioList){
+    for(RawAudio cur : audioList){
         ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5);
         chromaprint_start(ctx, cur.sample_rate, cur.channels);
         chromaprint_feed(ctx, (cur.arr + startShift*channels), cur.length - (startShift+endShift)*channels);
@@ -152,136 +161,90 @@ int main()
             ASSERT(delay == chromaprint_get_delay(ctx), "Delay Mismatch\n");
             ASSERT(item_duration == chromaprint_get_item_duration(ctx), "Item Duration Mismatch\n");
         }
-
-        chromaprint_get_raw_fingerprint(ctx, &audioHashes[index], &hashSizes[index]);
+        chroma[index]=(struct ChromaArr){nullptr, 0};
+        chromaprint_get_raw_fingerprint(ctx, &chroma[index].arr, &chroma[index].size);
         chromaprint_free(ctx);
         index++;
     }
 
     cout << "Chromaprint done!\n";
 
-    int combinedLen = hashSizes[0] + hashSizes[1] + 1;
-    int offset = hashSizes[0] + 1;
+    int combinedLen = chroma[0].size + chroma[1].size + 1;
+    int offset = chroma[0].size + 1;
     uint32_t * merged = new uint32_t[combinedLen];
-    std::copy(audioHashes[0], audioHashes[0] + hashSizes[0], merged);
-    delete[] audioHashes[0];
-    std::copy(audioHashes[1], audioHashes[1] + hashSizes[1], merged + hashSizes[0] + 1);
-    delete[] audioHashes[1];
+    std::copy(chroma[0].arr, chroma[0].arr + chroma[0].size, merged);
+    delete[] chroma[0].arr;
+    std::copy(chroma[1].arr, chroma[1].arr + chroma[1].size, merged + offset);
+    delete[] chroma[1].arr;
 
     int max; int* compressed; uint32_t* rank_to_val;
     std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
     // Sentinel in between the 2 strings
-    compressed[hashSizes[0]] = 0;
+    compressed[chroma[0].size] = 0;
     cout << "Finished compressing\n";
 
-    for(int i=0; i<combinedLen-offset; i++){
-        
-        if(compare_gray_codes(rank_to_val[compressed[i]], rank_to_val[compressed[i+offset]])<0.8){
-            cout << i << " Matching indices at the start of both videos\n";
-            cout << (double) i * item_duration / sample_rate << " seconds\n";
-            break;
-        }
-
-    }
-
     int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
-
     cout << "Made suffix array\n";
-    // for(int i=0; i<combinedLen ; i++){
-    //     cout << suffixArr[i] << ", ";
-    // }
-    // cout << endl;
 
     int* rankArr = create_rank_arr(suffixArr, combinedLen);
     // lcp in range from [1, combinedLen)
     int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
     cout << "Made LCP array\n";
 
-    // for(int i=1; i<combinedLen ; i++){
-    //     cout << lcpArr[i] << ", ";
-    // }
-    // cout << endl;
-
-    int startA, startB, len, maxLCP;
-    std::tie(startA, startB, len, maxLCP) = longest_common_substring(suffixArr, lcpArr, combinedLen, hashSizes[0]);
+    // int startA, startB, len;
+    CommonSubArr common = longest_common_substring(suffixArr, lcpArr, combinedLen, offset-1);
     cout << "Found least common substring\n";
 
-    // cout << "SAMPLE RATE: " << sample_rate << endl;
-
-    // converts item counts to secs
     auto toSec = [item_duration, sample_rate](int in) {
         return (double) in * item_duration / sample_rate;
     };
-
     auto compareIndices = [compressed, rank_to_val](int a, int b) {
         return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
     };
 
-    // cout << "ITEM DUR: " << toSec(1) << endl;
-    // cout << "Delay SEC: " << (double) delay / sample_rate << endl;
-    // cout << "Common SEC: " << toSec(len) << endl;
-    // cout << toSec(hashSizes[0]) << " " << toSec(hashSizes[1]) << endl;
-
     double delay_sec = (double) delay / sample_rate;
-    int sizeA = hashSizes[0];
+    int sizeA = chroma[0].size;
     cout << "ENDOH: " << toSec(sizeA) + delay_sec << endl;
 
-    cout << "Max lcp in sec: " << toSec(maxLCP) << endl;
     cout << endl << "Common Substrings found" << endl;
-    cout << "Length in sec: " << toSec(len) << endl;
-    cout << toSec(startA) << " to " << toSec(startA + len) + delay_sec << endl;
-    cout << toSec(startB - sizeA - 1) << " to " << toSec(startB + len - sizeA - 1) + delay_sec << endl;
+    cout << "Length in sec: " << toSec(common.length) + delay_sec << endl;
+    cout << startShiftsec + toSec(common.startA) << " to " << startShiftsec + toSec(common.startA + common.length) + delay_sec << endl;
+    cout << startShiftsec + toSec(common.startB - sizeA - 1) << " to " << startShiftsec + toSec(common.startB + common.length - sizeA - 1) + delay_sec << endl;
     cout << endl;
 
-    int endA = startA + len; int endB = startB + len;
+    int startA = common.startA; int startB = common.startB;
     const int mismatch_threshold = 1;
     int mismatch_count=0;
-    while(startA>=0 && startB>sizeA){
-        if(compareIndices(startA, startB)<0.8){
+    while(startA>=0 && startB>=offset){
+        if(compareIndices(startA, startB)<0.8)
             mismatch_count++;
-        }
-        // else{
-        //     mismatch_count=std::max(0, mismatch_count-1);
-        // }
-        if(mismatch_count > mismatch_threshold){
+        if(mismatch_count > mismatch_threshold)
             break;
-        }
-        // cout << compressed[startA] << " " << compressed[startB] << "\n";
         startA--;startB--;
     }
     while(compressed[startA]!=compressed[startB]){
         startA++; startB++;
     }
     mismatch_count = 0;
-    endA-=10; endB-=10;
+    int endA = startA + common.length; int endB = startB + common.length;
+    endA-=1; endB-=1;
 
     while(endA<sizeA && endB<combinedLen){
-        if(compareIndices(endA, endB)<0.8){
+        if(compareIndices(endA, endB)<0.8)
             mismatch_count++;
-        }
-        // else{
-        //     mismatch_count=std::max(0, mismatch_count-1);
-        // }
-        if(mismatch_count > mismatch_threshold){
+        if(mismatch_count > mismatch_threshold)
             break;
-        }
-        // cout << compressed[endA] << " " << compressed[endB] << " " << mismatch_count << "\n";
         endA++;endB++;
     }
     while(compressed[endA]!=compressed[endB]){
         endA--; endB--;
     }
-    cout  << compressed[endA] << " comp " << compressed[endB] << endl;
-    // cout << "END: " << toSec(sizeA) << endl;
-    cout << toSec(startA) << " to " << toSec(endA) + delay_sec << endl;
-    // cout << "END: " << toSec(combinedLen) << endl;
-    cout << toSec(startB - sizeA - 1) << " to " << toSec(endB - sizeA - 1) + delay_sec << endl;
-    cout << endl;
 
+    cout << startShiftsec + toSec(startA) << " to " << startShiftsec + toSec(endA) + delay_sec << endl;
+    cout << startShiftsec + toSec(startB - sizeA - 1) << " to " << startShiftsec+ toSec(endB - sizeA - 1) + delay_sec << endl;
     cout << "NEW LEN: " << toSec(endA-startA) + delay_sec << endl;
 
     cout << "DELAY: " << delay_sec << endl;
-
     cout << "SINGLE SAMPLE LENGTH: " << toSec(1) << endl;
     // for(int i=startA-10; i<endA; i++){
     //     cout << compressed[i] << " ";
@@ -291,45 +254,6 @@ int main()
     //     cout << compressed[i] << " ";
     // }
     cout << "\n\n";
-
-    // O(n) double check
-    // int foundIndex = -1;
-    // for(int i=sizeA; i<combinedLen; i++){
-    //     bool worked = true;
-    //     for(int j=0; j<len-1; j++){
-    //         if(compressed[startA+j]!=compressed[i+j]){
-    //             worked = false;
-    //             break;
-    //         }
-    //     }
-    //     if(worked){
-    //         foundIndex = i;
-    //         break;
-    //     }
-    // }
-    // while(foundIndex>sizeA && startA>0 && compressed[foundIndex]==compressed[startA]){
-    //     foundIndex--;startA--;
-    // }
-    // foundIndex+=1;startA+=1;
-
-    // for(int i = startA; i < startA+10; i++)
-    //     cout << compressed[i] << " ";
-    // cout << endl;
-    // cout << endl;
-
-    // if(foundIndex!=-1)
-    //     for(int i = foundIndex; i < foundIndex+10; i++)
-    //         cout << compressed[i] << " ";
-    // cout << endl;
-
-    // for(int i = startA-20; i < startA+1; i++){
-    //     cout << compressed[i] << " " << compressed[i+foundIndex-startA] << endl;
-    // }
-    
-    // ASSERT(foundIndex-sizeA-1==startB, "Substring matching error");
-
-    // cout << toSec(startA) << " to " << toSec(startA + len) << endl;
-    // cout << toSec(foundIndex-sizeA-1) << " to " << toSec(foundIndex-sizeA-1+len) << endl;
 
     return 0;
 }
