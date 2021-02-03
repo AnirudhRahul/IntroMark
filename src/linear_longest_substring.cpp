@@ -1,5 +1,6 @@
 #include "linear_longest_substring.hpp"
 #include <vector>
+#include <algorithm>
 
 using namespace std;
 
@@ -34,7 +35,10 @@ bool intersect(CommonSubArr a, CommonSubArr b){
     return strA || strB;
 }
 
-#include <iostream>
+bool compareByLength(const CommonSubArr &a, const CommonSubArr &b){
+    return a.length < b.length;
+}
+
 vector<CommonSubArr> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA, int threshold){
     vector<CommonSubArr> substrings;
     
@@ -68,11 +72,7 @@ vector<CommonSubArr> longest_common_substring(int *suffixArr, int* lcpArr, int s
 
         }
     }
-    cout << "Comm Substrings length " << substrings.size() << endl;
-    for(CommonSubArr cur:substrings){
-        cout << cur.startA << " " << cur.startB << " " << cur.length << "\n\n";
-    }
-    
+    sort(substrings.begin(), substrings.end(), compareByLength);
     return substrings;
 }
 

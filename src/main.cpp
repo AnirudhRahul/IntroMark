@@ -119,10 +119,6 @@ int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
     return len/channels;
 }
 
-bool compareByLength(const CommonSubArr &a, const CommonSubArr &b){
-    return a.length < b.length;
-}
-
 int main()
 {
     const char* path1 = "../test_audio/normal_ep1.wav";
@@ -208,47 +204,48 @@ int main()
     };
 
     double delay_sec = (double) delay / sample_rate;
-    int sizeA = chroma[0].size;
-    cout << "ENDOH: " << toSec(sizeA) + delay_sec << endl;
+    int sizeA = chroma[0].size; int sizeB = chroma[1].size;
+    cout << "END OF A: " << toSec(sizeA) + delay_sec << endl;
+    cout << "END OF B: " << toSec(sizeB) + delay_sec << endl;
 
     for(CommonSubArr common: common_substring_list){
         cout << endl << "Common Substrings found" << endl;
         cout << "Length in sec: " << toSec(common.length) + delay_sec << endl;
         cout << startShiftsec + toSec(common.startA) << " to " << startShiftsec + toSec(common.startA + common.length) + delay_sec << endl;
         cout << startShiftsec + toSec(common.startB - sizeA - 1) << " to " << startShiftsec + toSec(common.startB + common.length - sizeA - 1) + delay_sec << endl;
-        cout << endl;
+        // cout << endl;
 
-        int startA = common.startA; int startB = common.startB;
-        const int mismatch_threshold = 1;
-        int mismatch_count=0;
-        while(startA>=0 && startB>=offset){
-            if(compareIndices(startA, startB)<0.8)
-                mismatch_count++;
-            if(mismatch_count > mismatch_threshold)
-                break;
-            startA--;startB--;
-        }
-        while(compressed[startA]!=compressed[startB]){
-            startA++; startB++;
-        }
-        mismatch_count = 0;
-        int endA = startA + common.length; int endB = startB + common.length;
-        endA-=1; endB-=1;
+        // int startA = common.startA; int startB = common.startB;
+        // const int mismatch_threshold = 1;
+        // int mismatch_count=0;
+        // while(startA>=0 && startB>=offset){
+        //     if(compareIndices(startA, startB)<0.8)
+        //         mismatch_count++;
+        //     if(mismatch_count > mismatch_threshold)
+        //         break;
+        //     startA--;startB--;
+        // }
+        // while(compressed[startA]!=compressed[startB]){
+        //     startA++; startB++;
+        // }
+        // mismatch_count = 0;
+        // int endA = startA + common.length; int endB = startB + common.length;
+        // endA-=1; endB-=1;
 
-        while(endA<sizeA && endB<combinedLen){
-            if(compareIndices(endA, endB)<0.8)
-                mismatch_count++;
-            if(mismatch_count > mismatch_threshold)
-                break;
-            endA++;endB++;
-        }
-        while(compressed[endA]!=compressed[endB]){
-            endA--; endB--;
-        }
+        // while(endA<sizeA && endB<combinedLen){
+        //     if(compareIndices(endA, endB)<0.8)
+        //         mismatch_count++;
+        //     if(mismatch_count > mismatch_threshold)
+        //         break;
+        //     endA++;endB++;
+        // }
+        // while(compressed[endA]!=compressed[endB]){
+        //     endA--; endB--;
+        // }
 
-        cout << startShiftsec + toSec(startA) << " to " << startShiftsec + toSec(endA) + delay_sec << endl;
-        cout << startShiftsec + toSec(startB - sizeA - 1) << " to " << startShiftsec+ toSec(endB - sizeA - 1) + delay_sec << endl;
-        cout << "NEW LEN: " << toSec(endA-startA) + delay_sec << endl;
+        // cout << startShiftsec + toSec(startA) << " to " << startShiftsec + toSec(endA) + delay_sec << endl;
+        // cout << startShiftsec + toSec(startB - sizeA - 1) << " to " << startShiftsec+ toSec(endB - sizeA - 1) + delay_sec << endl;
+        // cout << "NEW LEN: " << toSec(endA-startA) + delay_sec << endl;
         cout << "\n\n";   
     }
     cout << "DELAY: " << delay_sec << endl;
