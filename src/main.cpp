@@ -194,7 +194,7 @@ int main()
 
     int threshold = (int) (1.0 * sample_rate / item_duration);
     vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
-    
+    cout << "OLD LEN " << common_substring_list.size() << endl; 
     int mergeThreshold = (int) (5.0 * sample_rate / item_duration);
     int offsetThreshold = (int) (0.01 * sample_rate / item_duration);
     for(int i=common_substring_list.size()-1;i>0;i++){
@@ -215,7 +215,8 @@ int main()
         }
 
     }
-    
+    cout << "NEW LEN " << common_substring_list.size() << endl; 
+
     cout << "Found least common substrings\n";
 
     auto toSec = [item_duration, sample_rate](int in) {
