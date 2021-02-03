@@ -121,8 +121,8 @@ int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
 
 int main()
 {
-    const char* path1 = "../test_audio/short_ep1.wav";
-    const char* path2 = "../test_audio/short_ep2.wav";
+    const char* path1 = "../test_audio/normal_ep1.wav";
+    const char* path2 = "../test_audio/normal_ep2.wav";
     RawAudio audio1 = audioFileToArr(path1);
     RawAudio audio2 = audioFileToArr(path2);
     cout << "Read audio\n";
@@ -195,13 +195,16 @@ int main()
     int threshold = (int) (1.0 * sample_rate / item_duration);
     vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
     cout << "OLD LEN " << common_substring_list.size() << endl; 
-    int mergeThreshold = (int) (5.0 * sample_rate / item_duration);
-    int offsetThreshold = (int) (0.01 * sample_rate / item_duration);
+    int mergeThreshold = (int) delay;
+    int offsetThreshold = std::max(2, (int)(0.1 * sample_rate / item_duration));
     for(int i=common_substring_list.size()-1;i>0;i--){
         CommonSubArr next = common_substring_list[i]; 
         for(int k=i-1; k>=0; k--){
             CommonSubArr cur = common_substring_list[k];
-            if(next.startA - cur.startA < mergeThreshold && abs(cur.startA - cur.startB - next.startA + next.startB) < offsetThreshold){
+            cout << next.startA - cur.startA - cur.length << " thresh " << mergeThreshold << endl; 
+            cout << abs(cur.startA - cur.startB - (next.startA - next.startB)) << " < " << offsetThreshold << endl; 
+            int gap = next.startA - cur.startA - cur.length;
+            if(gap>=0 && gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
                 common_substring_list[i] = (struct CommonSubArr){
                     cur.startA,
                     cur.startB,
@@ -236,40 +239,40 @@ int main()
         cout << startShiftsec + toSec(common.startA) << " to " << startShiftsec + toSec(common.startA + common.length) + delay_sec << endl;
         cout << startShiftsec + toSec(common.startB - sizeA - 1) << " to " << startShiftsec + toSec(common.startB + common.length - sizeA - 1) + delay_sec << endl;
         // cout << endl;
-
-        // int startA = common.startA; int startB = common.startB;
-        // const int mismatch_threshold = 1;
-        // int mismatch_count=0;
-        // while(startA>=0 && startB>=offset){
-        //     if(compareIndices(startA, startB)<0.8)
-        //         mismatch_count++;
-        //     if(mismatch_count > mismatch_threshold)
-        //         break;
-        //     startA--;startB--;
-        // }
-        // while(compressed[startA]!=compressed[startB]){
-        //     startA++; startB++;
-        // }
-        // mismatch_count = 0;
-        // int endA = startA + common.length; int endB = startB + common.length;
-        // endA-=1; endB-=1;
-
-        // while(endA<sizeA && endB<combinedLen){
-        //     if(compareIndices(endA, endB)<0.8)
-        //         mismatch_count++;
-        //     if(mismatch_count > mismatch_threshold)
-        //         break;
-        //     endA++;endB++;
-        // }
-        // while(compressed[endA]!=compressed[endB]){
-        //     endA--; endB--;
-        // }
-
-        // cout << startShiftsec + toSec(startA) << " to " << startShiftsec + toSec(endA) + delay_sec << endl;
-        // cout << startShiftsec + toSec(startB - sizeA - 1) << " to " << startShiftsec+ toSec(endB - sizeA - 1) + delay_sec << endl;
-        // cout << "NEW LEN: " << toSec(endA-startA) + delay_sec << endl;
-        cout << "\n\n";   
     }
+    //     // int startA = common.startA; int startB = common.startB;
+    //     // const int mismatch_threshold = 1;
+    //     // int mismatch_count=0;
+    //     // while(startA>=0 && startB>=offset){
+    //     //     if(compareIndices(startA, startB)<0.8)
+    //     //         mismatch_count++;
+    //     //     if(mismatch_count > mismatch_threshold)
+    //     //         break;
+    //     //     startA--;startB--;
+    //     // }
+    //     // while(compressed[startA]!=compressed[startB]){
+    //     //     startA++; startB++;
+    //     // }
+    //     // mismatch_count = 0;
+    //     // int endA = startA + common.length; int endB = startB + common.length;
+    //     // endA-=1; endB-=1;
+
+    //     // while(endA<sizeA && endB<combinedLen){
+    //     //     if(compareIndices(endA, endB)<0.8)
+    //     //         mismatch_count++;
+    //     //     if(mismatch_count > mismatch_threshold)
+    //     //         break;
+    //     //     endA++;endB++;
+    //     // }
+    //     // while(compressed[endA]!=compressed[endB]){
+    //     //     endA--; endB--;
+    //     // }
+
+    //     // cout << startShiftsec + toSec(startA) << " to " << startShiftsec + toSec(endA) + delay_sec << endl;
+    //     // cout << startShiftsec + toSec(startB - sizeA - 1) << " to " << startShiftsec+ toSec(endB - sizeA - 1) + delay_sec << endl;
+    //     // cout << "NEW LEN: " << toSec(endA-startA) + delay_sec << endl;
+    //     cout << "\n\n";   
+    // }
     cout << "DELAY: " << delay_sec << endl;
     cout << "SINGLE SAMPLE LENGTH: " << toSec(1) << endl;
     return 0;
