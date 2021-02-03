@@ -32,7 +32,6 @@ bool intersect(CommonSubArr a, CommonSubArr b){
     bool strA = a.startA <= b.startA + b.length && b.startA <= a.startA + a.length;
     bool strB = a.startB <= b.startB + b.length && b.startB <= a.startB + a.length;;
     return strA || strB;
-
 }
 
 #include <iostream>
