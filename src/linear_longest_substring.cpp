@@ -1,5 +1,5 @@
 #include "linear_longest_substring.hpp"
-#include <tuple>
+#include <vector>
 
 using namespace std;
 
@@ -28,30 +28,53 @@ int* create_lcp_arr(int *suffixArr, int* rankArr, int* arr, int size){
     return lcp;
 }
 
-CommonSubArr longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA){
-    int max = 0;
-    int maxIndex = 0;
-    int startA, startB, len=0;
+bool intersect(CommonSubArr a, CommonSubArr b){
+    bool strA = a.startA <= b.startA + b.length && b.startA <= a.startA + a.length;
+    bool strB = a.startB <= b.startB + b.length && b.startB <= a.startB + a.length;;
+    return strA || strB;
+
+}
+
+#include <iostream>
+vector<CommonSubArr> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA, int threshold){
+    vector<CommonSubArr> substrings;
+    
     for(int i=1; i<size; i++){
-        if(lcpArr[i]>len){
+        if(lcpArr[i]>threshold){
             int a = suffixArr[i];
             int b = suffixArr[i-1];
+            CommonSubArr cur = (struct CommonSubArr){0, 0, 0};
             if((a<sizeA && b>sizeA)){
-                startA = a; startB = b;
-                maxIndex = i;
-                len = lcpArr[i];
+                cur.startA = a; cur.startB = b;
+                cur.length = lcpArr[i];
             }
             else if((b<sizeA && a>sizeA)){
-                startA = b; startB = a;
-                maxIndex = i;
-                len = lcpArr[i];
+                cur.startA = b; cur.startB = a;
+                cur.length = lcpArr[i];
             }
+            if(cur.startA + cur.startB + cur.length > 0){
+                bool assigned = false;
+                for(int j=0; j<substrings.size(); j++){
+                    if(intersect(cur, substrings[j])){
+                        if(substrings[j].length < cur.length)
+                            substrings[j] = cur;
+                        assigned = true;
+                        break;
+                    }
+                }
+                if(!assigned){
+                    substrings.push_back(cur);
+                }
+            }
+
         }
-        if(lcpArr[i]>max)
-            max = lcpArr[i];
+    }
+    cout << "Comm Substrings length " << substrings.size() << endl;
+    for(CommonSubArr cur:substrings){
+        cout << cur.startA << " " << cur.startB << " " << cur.length << "\n\n";
     }
     
-    return (struct CommonSubArr){startA, startB, len};
+    return substrings;
 }
 
 

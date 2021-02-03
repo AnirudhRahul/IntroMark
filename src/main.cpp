@@ -191,8 +191,8 @@ int main()
     int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
     cout << "Made LCP array\n";
 
-    // int startA, startB, len;
-    CommonSubArr common = longest_common_substring(suffixArr, lcpArr, combinedLen, offset-1);
+    int threshold = (int) (1.0 * sample_rate / item_duration);
+    CommonSubArr common = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold)[0];
     cout << "Found least common substring\n";
 
     auto toSec = [item_duration, sample_rate](int in) {

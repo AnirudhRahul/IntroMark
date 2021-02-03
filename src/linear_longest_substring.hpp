@@ -1,7 +1,7 @@
 
 #ifndef DEFINED_LINEAR_SUBSTRING_HPP
 #define DEFINED_LINEAR_SUBSTRING_HPP
-
+#include <vector>
 struct CommonSubArr{
     int startA;
     int startB;
@@ -16,6 +16,6 @@ int* create_rank_arr(int *suffixArr, int size);
 int* create_lcp_arr(int *suffixArr, int* rankArr, int* arr, int size);
 
 
-CommonSubArr longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA);
+std::vector<CommonSubArr> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA, int threshold);
 
 #endif
