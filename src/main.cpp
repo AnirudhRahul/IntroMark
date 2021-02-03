@@ -192,6 +192,11 @@ int main()
     int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
     cout << "Made LCP array\n";
 
+    auto compareIndices = [compressed, rank_to_val](int a, int b) {
+        return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
+    };
+
+
     int threshold = (int) (1.0 * sample_rate / item_duration);
     vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
     cout << "OLD LEN " << common_substring_list.size() << endl; 
@@ -201,10 +206,23 @@ int main()
         CommonSubArr next = common_substring_list[i]; 
         for(int k=i-1; k>=0; k--){
             CommonSubArr cur = common_substring_list[k];
-            cout << next.startA - cur.startA - cur.length << " thresh " << mergeThreshold << endl; 
-            cout << abs(cur.startA - cur.startB - (next.startA - next.startB)) << " < " << offsetThreshold << endl; 
             int gap = next.startA - cur.startA - cur.length;
             if(gap>=0 && gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
+                
+                if(gap>=mergeThreshold/5){
+                    double match_measure = 0;
+                    cout << "CONDITIONED CALLED"<<endl;
+                    for(int j=1; j<=gap; j++){
+                        match_measure+=compareIndices(next.startA-j, next.startB-j);
+                    }
+                    if(match_measure < 0.3*gap){
+                        cout<<"CONDITION WORKED"<<endl;
+                        continue;
+                    }
+                    cout << "CONDITION FAILED: " << match_measure/gap << endl;
+                }
+
+
                 common_substring_list[i] = (struct CommonSubArr){
                     cur.startA,
                     cur.startB,
@@ -223,9 +241,6 @@ int main()
 
     auto toSec = [item_duration, sample_rate](int in) {
         return (double) in * item_duration / sample_rate;
-    };
-    auto compareIndices = [compressed, rank_to_val](int a, int b) {
-        return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
     };
 
     double delay_sec = (double) delay / sample_rate;

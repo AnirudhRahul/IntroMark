@@ -108,6 +108,6 @@ FingerprinterConfigurationTest5::FingerprinterConfigurationTest5()
 	set_interpolate(true);
 
 	set_frame_size(kDefaultFrameSize);
-	set_frame_overlap(kDefaultFrameSize - 6000);
+	set_frame_overlap(kDefaultFrameSize - 3000);
 }
 
