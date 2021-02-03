@@ -194,7 +194,29 @@ int main()
 
     int threshold = (int) (1.0 * sample_rate / item_duration);
     vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
-    cout << "Found least common substring\n";
+    
+    int mergeThreshold = (int) (5.0 * sample_rate / item_duration);
+    int offsetThreshold = (int) (0.01 * sample_rate / item_duration);
+    for(int i=common_substring_list.size()-1;i>0;i++){
+        CommonSubArr next = common_substring_list[i]; 
+        for(int k=i-1; k>=0; k--){
+            CommonSubArr cur = common_substring_list[k];
+            if(next.startA - cur.startA < mergeThreshold && abs(cur.startA - cur.startB - next.startA + next.startB) < offsetThreshold){
+                common_substring_list[i] = (struct CommonSubArr){
+                    cur.startA,
+                    cur.startB,
+                    std::min(next.startA + next.length - cur.startA, next.startB + next.length - cur.startB)
+                };
+                common_substring_list.erase(common_substring_list.begin()+k);
+                break;
+            }
+            if(next.startA-cur.startA>=mergeThreshold)
+                break;
+        }
+
+    }
+    
+    cout << "Found least common substrings\n";
 
     auto toSec = [item_duration, sample_rate](int in) {
         return (double) in * item_duration / sample_rate;

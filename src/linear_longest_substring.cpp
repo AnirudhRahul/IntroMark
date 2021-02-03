@@ -35,8 +35,8 @@ bool intersect(CommonSubArr a, CommonSubArr b){
     return strA || strB;
 }
 
-bool compareByLength(const CommonSubArr &a, const CommonSubArr &b){
-    return a.length < b.length;
+bool compareByStart(const CommonSubArr &a, const CommonSubArr &b){
+    return a.startA < b.startA;
 }
 
 vector<CommonSubArr> longest_common_substring(int *suffixArr, int* lcpArr, int size, int sizeA, int threshold){
@@ -72,7 +72,7 @@ vector<CommonSubArr> longest_common_substring(int *suffixArr, int* lcpArr, int s
 
         }
     }
-    sort(substrings.begin(), substrings.end(), compareByLength);
+    sort(substrings.begin(), substrings.end(), compareByStart);
     return substrings;
 }
 
