@@ -121,8 +121,8 @@ int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
 
 int main()
 {
-    const char* path1 = "../test_audio/normal_ep1.wav";
-    const char* path2 = "../test_audio/normal_ep2.wav";
+    const char* path1 = "../test_audio/short_ep1.wav";
+    const char* path2 = "../test_audio/short_ep2.wav";
     RawAudio audio1 = audioFileToArr(path1);
     RawAudio audio2 = audioFileToArr(path2);
     cout << "Read audio\n";
@@ -213,7 +213,6 @@ int main()
             if(next.startA-cur.startA>=mergeThreshold)
                 break;
         }
-
     }
     cout << "NEW LEN " << common_substring_list.size() << endl; 
 
