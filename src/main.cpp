@@ -209,7 +209,7 @@ int main()
             int gap = next.startA - cur.startA - cur.length;
             if(gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
                 
-                if(gap>=mergeThreshold/5){
+                if(gap>0){
                     double match_measure = 0;
                     cout << "CONDITIONED CALLED"<<endl;
                     for(int j=1; j<=gap; j++){
