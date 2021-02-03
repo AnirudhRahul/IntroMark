@@ -207,7 +207,7 @@ int main()
         for(int k=i-1; k>=0; k--){
             CommonSubArr cur = common_substring_list[k];
             int gap = next.startA - cur.startA - cur.length;
-            if(gap>=0 && gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
+            if(gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
                 
                 if(gap>=mergeThreshold/5){
                     double match_measure = 0;
@@ -249,6 +249,9 @@ int main()
     cout << "END OF B: " << toSec(sizeB) + delay_sec << endl;
 
     for(CommonSubArr common: common_substring_list){
+        if(common.length < delay*2){
+            continue
+        }
         cout << endl << "Common Substrings found" << endl;
         cout << "Length in sec: " << toSec(common.length) + delay_sec << endl;
         cout << startShiftsec + toSec(common.startA) << " to " << startShiftsec + toSec(common.startA + common.length) + delay_sec << endl;
