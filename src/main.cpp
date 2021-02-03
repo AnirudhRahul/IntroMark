@@ -197,7 +197,7 @@ int main()
     cout << "OLD LEN " << common_substring_list.size() << endl; 
     int mergeThreshold = (int) (5.0 * sample_rate / item_duration);
     int offsetThreshold = (int) (0.01 * sample_rate / item_duration);
-    for(int i=common_substring_list.size()-1;i>0;i++){
+    for(int i=common_substring_list.size()-1;i>0;i--){
         CommonSubArr next = common_substring_list[i]; 
         for(int k=i-1; k>=0; k--){
             CommonSubArr cur = common_substring_list[k];
