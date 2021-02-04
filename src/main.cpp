@@ -246,7 +246,7 @@ int main()
         for(int i=0;i<=delay_item;i++){
             int indexA = common.startA + common.length + i;
             int indexB = common.startB + common.length + i;
-            if(indexB>=combinedLen || indexA>=sizeA){
+            if(indexB>=combinedLen || indexA>=chroma[0].size){
                 common.length+=i;
                 break;
             }
@@ -262,9 +262,8 @@ int main()
 
 
     double delay_sec = (double) delay / sample_rate;
-    int sizeA = chroma[0].size; int sizeB = chroma[1].size;
-    double secsA = toSec(sizeA) + delay_sec;
-    double secsB = toSec(sizeB) + delay_sec;
+    double secsA = toSec(chroma[0].size) + delay_sec;
+    double secsB = toSec(chroma[1].size) + delay_sec;
     cout << "END OF A: " << secsA << endl;
     cout << "END OF B: " << secsB << endl;
 
