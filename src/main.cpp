@@ -234,7 +234,7 @@ int main()
         }
     }
     // Filter out smaller because they're likely inaccurate
-    for(int i = common_substring_list.size(); i>=0; i++){
+    for(int i = common_substring_list.size(); i>=0; i--){
         if(common_substring_list[i].length <= delay_item)
             common_substring_list.erase(common_substring_list.begin() + i);
     }
