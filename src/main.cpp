@@ -242,22 +242,22 @@ int main()
 
     // Add delay
     for(CommonSubArr common: common_substring_list){
-        double matchScore = 0;
-        for(int i=0;i<=delay_item;i++){
+        bool added = false;
+        for(int i=delay_item;i>delay_item/4;i--){
             int indexA = common.startA + common.length + i;
             int indexB = common.startB + common.length + i;
             if(indexB>=combinedLen || indexA>=chroma[0].size){
-                common.length+=i;
-                break;
+                continue;
             }
-            matchScore += compareIndices(indexA, indexB);
-            
-            if(i>4 && matchScore/(i+1) < 0.9){
-                cout << "MAtched " << i << " out of total " << delay_item << endl;
+            if(compareIndices(indexA, indexB) > 0.6){
+                cout << "Matched " << i << " out of total " << delay_item << endl;
                 common.length+=i;
+                added=true;
                 break;
             }
         }
+        if(!added)
+            common.length+=delay_item/4;
     }
 
 
