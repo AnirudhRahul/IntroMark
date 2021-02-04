@@ -270,7 +270,6 @@ int main()
             }
 
             if(badMatches==4){
-                cout << "Matched " << i << " out of total " << delay_item << endl;
                 break;
             }
         }
@@ -284,9 +283,8 @@ int main()
                 break;
             }
         }
-
+        cout << "Matched " << lengthToAdd << " out of total " << delay_item << endl;
         common.length+=lengthToAdd;
-
     }
 
 
