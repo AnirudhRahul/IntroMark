@@ -233,63 +233,78 @@ int main()
                 break;
         }
     }
+    // Filter out smaller because they're likely inaccurate
+    for(int i = common_substring_list.size(); i>=0; i++){
+        if(common_substring_list[i].length <= delay_item)
+            common_substring_list.erase(common_substring_list.begin() + i);
+    }
     cout << "NEW LEN " << common_substring_list.size() << endl; 
 
-    double delay_sec = (double) delay / sample_rate;
-    int sizeA = chroma[0].size; int sizeB = chroma[1].size;
-    cout << "END OF A: " << toSec(sizeA) + delay_sec << endl;
-    cout << "END OF B: " << toSec(sizeB) + delay_sec << endl;
-
-    struct TimeRange{
-        double start;
-        double end;
-    };
-    vector<TimeRange> listA; vector<TimeRange> listB;
-    listA.push_back((struct TimeRange){0, startShift}); listB.push_back((struct TimeRange){0, startShift});
-    listA.push_back((struct TimeRange){sizeA - endShift, sizeA});
-    listB.push_back((struct TimeRange){sizeB - endShift, sizeB});
-
+    // Add delay
     for(CommonSubArr common: common_substring_list){
-        // to short to accurately match
-        if(toSec(common.length) < delay_sec){
-            continue;
-        }
-        TimeRange curA = (struct TimeRange){
-            common.startA,
-            common.startA + common.length
-        };
-        TimeRange curB = (struct TimeRange){
-            common.startB,
-            common.startB + common.length
-        };
-        // Add delay
         double matchScore = 0;
         for(int i=0;i<=delay_item;i++){
-            int indexA = curA.end+i;
-            int indexB = curB.end+i;
+            int indexA = common.startA + common.length + i;
+            int indexB = common.startB + common.length + i;
             if(indexB>=combinedLen || indexA>=sizeA){
-                curA.end = sizeA; curB.end = combinedLen;
+                common.length+=i;
                 break;
             }
             matchScore += compareIndices(indexA, indexB);
             
             if(i>delay_item/10 && matchScore/(i+1) < 0.9){
                 cout << "MAtched " << i << " out of total " << delay_item;
-                curA.end+=i; curB.end+=i;
+                common.length+=i;
                 break;
             }
         }
-
-
-
-        cout << endl;
-        cout << "Length in sec: " << toSec(common.length) + delay_sec << endl;
-        cout << startShiftsec + toSec(common.startA) << " to " << startShiftsec + toSec(common.startA + common.length) + delay_sec << endl;
-        cout << startShiftsec + toSec(common.startB - sizeA - 1) << " to " << startShiftsec + toSec(common.startB + common.length - sizeA - 1) + delay_sec << endl;
-        cout << endl;
     }
+
+
+    double delay_sec = (double) delay / sample_rate;
+    int sizeA = chroma[0].size; int sizeB = chroma[1].size;
+    double secsA = toSec(sizeA) + delay_sec;
+    double secsB = toSec(sizeB) + delay_sec;
+    cout << "END OF A: " << secsA << endl;
+    cout << "END OF B: " << secsB << endl;
+
+    struct TimeRange{
+        double start;
+        double end;
+    };
+    vector<TimeRange> listA; vector<TimeRange> listB;
+    listA.push_back((struct TimeRange){0, startShiftsec}); 
+    listB.push_back((struct TimeRange){0, startShiftsec});
+    for(CommonSubArr common: common_substring_list){
+        TimeRange curA = (struct TimeRange){
+            startShift + toSec(common.startA),
+            startShift + toSec(common.startA + common.length)
+        };
+        listA.push_back(curA);
+
+        TimeRange curB = (struct TimeRange){
+            startShift + toSec(common.startB - offset),
+            startShift + toSec(common.startB - offset + common.length)
+        };
+        listB.push_back(curB);
+    }
+    listA.push_back((struct TimeRange){secsA - endShiftsec, secsA});
+    listB.push_back((struct TimeRange){secsB - endShiftsec, secsB});
 
     cout << "DELAY: " << delay_sec << endl;
     cout << "SINGLE SAMPLE LENGTH: " << toSec(1) << endl;
+
+    cout << "\n\n\n";
+
+    cout << path1 << endl;
+    for(TimeRange cur:listA){
+        cout << cur.start << " to " << cur.end << endl;
+    }
+
+    cout << path2 << endl;
+    for(TimeRange cur:listB){
+        cout << cur.start << " to " << cur.end << endl;
+    }
+
     return 0;
 }
