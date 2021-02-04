@@ -195,12 +195,16 @@ int main()
     auto compareIndices = [compressed, rank_to_val](int a, int b) {
         return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
     };
+    auto toSec = [item_duration, sample_rate](int in) {
+        return (double) in * item_duration / sample_rate;
+    };
 
-
-    int threshold = (int) (1.0 * sample_rate / item_duration);
+    int threshold = (int) (toSec(1));
     vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
-    cout << "OLD LEN " << common_substring_list.size() << endl; 
-    int mergeThreshold = (int) delay;
+    cout << "OLD LEN " << common_substring_list.size() << endl;
+    
+    int delay_item = delay/item_duration;
+    int mergeThreshold = 2*delay_item;
     int offsetThreshold = std::max(2, (int)(0.1 * sample_rate / item_duration));
     for(int i=common_substring_list.size()-1;i>0;i--){
         CommonSubArr next = common_substring_list[i]; 
@@ -208,21 +212,15 @@ int main()
             CommonSubArr cur = common_substring_list[k];
             int gap = next.startA - cur.startA - cur.length;
             if(gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
-                
                 if(gap>0){
                     double match_measure = 0;
-                    cout << "CONDITIONED CALLED"<<endl;
                     for(int j=1; j<=gap; j++){
                         match_measure+=compareIndices(next.startA-j, next.startB-j);
                     }
-                    if(match_measure < 0.3*gap){
-                        cout<<"CONDITION WORKED"<<endl;
+                    if(match_measure/gap < 0.7){
                         continue;
                     }
-                    cout << "CONDITION FAILED: " << match_measure/gap << endl;
                 }
-
-
                 common_substring_list[i] = (struct CommonSubArr){
                     cur.startA,
                     cur.startB,
@@ -237,60 +235,60 @@ int main()
     }
     cout << "NEW LEN " << common_substring_list.size() << endl; 
 
-    cout << "Found least common substrings\n";
-
-    auto toSec = [item_duration, sample_rate](int in) {
-        return (double) in * item_duration / sample_rate;
-    };
-
     double delay_sec = (double) delay / sample_rate;
     int sizeA = chroma[0].size; int sizeB = chroma[1].size;
     cout << "END OF A: " << toSec(sizeA) + delay_sec << endl;
     cout << "END OF B: " << toSec(sizeB) + delay_sec << endl;
 
+    struct TimeRange{
+        double start;
+        double end;
+    };
+    vector<TimeRange> listA; vector<TimeRange> listB;
+    listA.push_back((struct TimeRange){0, startShift}); listB.push_back((struct TimeRange){0, startShift});
+    listA.push_back((struct TimeRange){sizeA - endShift, sizeA});
+    listB.push_back((struct TimeRange){sizeB - endShift, sizeB});
+
     for(CommonSubArr common: common_substring_list){
-        if(common.length < delay*2){
-            continue
+        // to short to accurately match
+        if(toSec(common.length) < delay_sec){
+            continue;
         }
-        cout << endl << "Common Substrings found" << endl;
+        TimeRange curA = (struct TimeRange){
+            common.startA,
+            common.startA + common.length
+        };
+        TimeRange curB = (struct TimeRange){
+            common.startB,
+            common.startB + common.length
+        };
+        // Add delay
+        double matchScore = 0;
+        for(int i=0;i<=delay_item;i++){
+            int indexA = curA.end+i;
+            int indexB = curB.end+i;
+            if(indexB>=combinedLen || indexA>=sizeA){
+                curA.end = sizeA; curB.end = combinedLen;
+                break;
+            }
+            matchScore += compareIndices(indexA, indexB);
+            
+            if(i>delay_item/10 && matchScore/(i+1) < 0.9){
+                cout << "MAtched " << i << " out of total " << delay_item;
+                curA.end+=i; curB.end+=i;
+                break;
+            }
+        }
+
+
+
+        cout << endl;
         cout << "Length in sec: " << toSec(common.length) + delay_sec << endl;
         cout << startShiftsec + toSec(common.startA) << " to " << startShiftsec + toSec(common.startA + common.length) + delay_sec << endl;
         cout << startShiftsec + toSec(common.startB - sizeA - 1) << " to " << startShiftsec + toSec(common.startB + common.length - sizeA - 1) + delay_sec << endl;
-        // cout << endl;
+        cout << endl;
     }
-    //     // int startA = common.startA; int startB = common.startB;
-    //     // const int mismatch_threshold = 1;
-    //     // int mismatch_count=0;
-    //     // while(startA>=0 && startB>=offset){
-    //     //     if(compareIndices(startA, startB)<0.8)
-    //     //         mismatch_count++;
-    //     //     if(mismatch_count > mismatch_threshold)
-    //     //         break;
-    //     //     startA--;startB--;
-    //     // }
-    //     // while(compressed[startA]!=compressed[startB]){
-    //     //     startA++; startB++;
-    //     // }
-    //     // mismatch_count = 0;
-    //     // int endA = startA + common.length; int endB = startB + common.length;
-    //     // endA-=1; endB-=1;
 
-    //     // while(endA<sizeA && endB<combinedLen){
-    //     //     if(compareIndices(endA, endB)<0.8)
-    //     //         mismatch_count++;
-    //     //     if(mismatch_count > mismatch_threshold)
-    //     //         break;
-    //     //     endA++;endB++;
-    //     // }
-    //     // while(compressed[endA]!=compressed[endB]){
-    //     //     endA--; endB--;
-    //     // }
-
-    //     // cout << startShiftsec + toSec(startA) << " to " << startShiftsec + toSec(endA) + delay_sec << endl;
-    //     // cout << startShiftsec + toSec(startB - sizeA - 1) << " to " << startShiftsec+ toSec(endB - sizeA - 1) + delay_sec << endl;
-    //     // cout << "NEW LEN: " << toSec(endA-startA) + delay_sec << endl;
-    //     cout << "\n\n";   
-    // }
     cout << "DELAY: " << delay_sec << endl;
     cout << "SINGLE SAMPLE LENGTH: " << toSec(1) << endl;
     return 0;
