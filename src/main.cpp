@@ -242,9 +242,13 @@ int main()
 
     // Add delay
     for(CommonSubArr common: common_substring_list){
-        bool added = false;
-        cout << common.startA + common.length + delay_item << " versus " << chroma[0].size << endl;
-        cout << common.startB + common.length + delay_item << " versus " << combinedLen << endl;
+        int endA = common.startA + common.length + delay_item;
+        int endB = common.startB + common.length + delay_item;
+        if(endA >= chroma[0].size || endB >= combinedLen){
+            common.length += delay_item;
+            continue;
+        }
+
         for(int i=0;i<delay_item;i++){
             int indexA = common.startA + common.length + i;
             int indexB = common.startB + common.length + i;
@@ -252,21 +256,37 @@ int main()
         }
         cout << endl;
 
-        for(int i=delay_item;i>delay_item/4;i--){
+        int badMatches = 0;
+        int lengthToAdd = 0;
+        for(int i=0;i<delay_item;i++){
             int indexA = common.startA + common.length + i;
             int indexB = common.startB + common.length + i;
-            if(indexB>=combinedLen || indexA>=chroma[0].size){
-                continue;
+            lengthToAdd = i;
+            if(compareIndices(indexA, indexB) < 0.8){
+                badMatches+=1;
             }
-            if(compareIndices(indexA, indexB) > 0.4){
+            else if(badMatches>0){
+                badMatches--;
+            }
+
+            if(badMatches==4){
                 cout << "Matched " << i << " out of total " << delay_item << endl;
-                common.length+=i;
-                added=true;
                 break;
             }
         }
-        if(!added)
-            common.length+=delay_item/4;
+        while(lengthToAdd>0){
+            int indexA = common.startA + common.length + lengthToAdd;
+            int indexB = common.startB + common.length + lengthToAdd;
+            if(compareIndices(indexA, indexB) < 0.8){
+                lengthToAdd--;
+            }
+            else{
+                break;
+            }
+        }
+
+        common.length+=lengthToAdd;
+
     }
 
 
