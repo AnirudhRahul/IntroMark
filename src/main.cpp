@@ -252,8 +252,8 @@ int main()
             }
             matchScore += compareIndices(indexA, indexB);
             
-            if(i>delay_item/10 && matchScore/(i+1) < 0.9){
-                cout << "MAtched " << i << " out of total " << delay_item;
+            if(i>4 && matchScore/(i+1) < 0.9){
+                cout << "MAtched " << i << " out of total " << delay_item << endl;
                 common.length+=i;
                 break;
             }
@@ -276,14 +276,14 @@ int main()
     listB.push_back((struct TimeRange){0, startShiftsec});
     for(CommonSubArr common: common_substring_list){
         TimeRange curA = (struct TimeRange){
-            startShift + toSec(common.startA),
-            startShift + toSec(common.startA + common.length)
+            startShiftsec + toSec(common.startA),
+            startShiftsec + toSec(common.startA + common.length)
         };
         listA.push_back(curA);
 
         TimeRange curB = (struct TimeRange){
-            startShift + toSec(common.startB - offset),
-            startShift + toSec(common.startB - offset + common.length)
+            startShiftsec + toSec(common.startB - offset),
+            startShiftsec + toSec(common.startB - offset + common.length)
         };
         listB.push_back(curB);
     }
