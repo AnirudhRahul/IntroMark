@@ -242,10 +242,10 @@ int main()
 
     // Add delay
     for(CommonSubArr common: common_substring_list){
-        int endA = common.startA + common.length + delay_item;
-        int endB = common.startB + common.length + delay_item;
+        common.length += delay_item;
+        int endA = common.startA + common.length;
+        int endB = common.startB + common.length;
         if(endA >= chroma[0].size || endB >= combinedLen){
-            common.length += delay_item;
             continue;
         }
 
@@ -256,35 +256,35 @@ int main()
         }
         cout << endl;
 
-        int badMatches = 0;
-        int lengthToAdd = 0;
-        for(int i=0;i<delay_item;i++){
-            int indexA = common.startA + common.length + i;
-            int indexB = common.startB + common.length + i;
-            lengthToAdd = i;
-            if(compareIndices(indexA, indexB) < 0.8){
-                badMatches+=1;
-            }
-            else if(badMatches>0){
-                badMatches--;
-            }
+        // int badMatches = 0;
+        // int lengthToAdd = 0;
+        // for(int i=0;i<delay_item;i++){
+        //     int indexA = common.startA + common.length + i;
+        //     int indexB = common.startB + common.length + i;
+        //     lengthToAdd = i;
+        //     if(compareIndices(indexA, indexB) < 0.8){
+        //         badMatches+=1;
+        //     }
+        //     else if(badMatches>0){
+        //         badMatches--;
+        //     }
 
-            if(badMatches==4){
-                break;
-            }
-        }
-        while(lengthToAdd>0){
-            int indexA = common.startA + common.length + lengthToAdd;
-            int indexB = common.startB + common.length + lengthToAdd;
-            if(compareIndices(indexA, indexB) < 0.8){
-                lengthToAdd--;
-            }
-            else{
-                break;
-            }
-        }
-        cout << "Matched " << lengthToAdd << " out of total " << delay_item << endl;
-        common.length+=lengthToAdd;
+        //     if(badMatches==4){
+        //         break;
+        //     }
+        // }
+        // while(lengthToAdd>0){
+        //     int indexA = common.startA + common.length + lengthToAdd;
+        //     int indexB = common.startB + common.length + lengthToAdd;
+        //     if(compareIndices(indexA, indexB) < 0.8){
+        //         lengthToAdd--;
+        //     }
+        //     else{
+        //         break;
+        //     }
+        // }
+        // cout << "Matched " << lengthToAdd << " out of total " << delay_item << endl;
+        // common.length+=lengthToAdd;
     }
 
 
