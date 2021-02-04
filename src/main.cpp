@@ -304,13 +304,13 @@ int main()
     for(CommonSubArr common: common_substring_list){
         TimeRange curA = (struct TimeRange){
             startShiftsec + toSec(common.startA),
-            startShiftsec + toSec(common.startA + common.length)
+            startShiftsec + toSec(common.startA + common.length) + 8
         };
         listA.push_back(curA);
 
         TimeRange curB = (struct TimeRange){
             startShiftsec + toSec(common.startB - offset),
-            startShiftsec + toSec(common.startB - offset + common.length)
+            startShiftsec + toSec(common.startB - offset + common.length) + 8
         };
         listB.push_back(curB);
     }

@@ -103,9 +103,13 @@ FingerprinterConfigurationTest4::FingerprinterConfigurationTest4()
 
 FingerprinterConfigurationTest5::FingerprinterConfigurationTest5()
 {
-	set_classifiers(kClassifiersTest3, 16);
+	// set_classifiers(kClassifiersTest3, 16);
+	// set_filter_coefficients(kChromaFilterCoefficients, kChromaFilterSize);
+	// set_interpolate(true);
+
+	set_classifiers(kClassifiersTest2, 16);
 	set_filter_coefficients(kChromaFilterCoefficients, kChromaFilterSize);
-	set_interpolate(true);
+	set_interpolate(false);
 
 	set_frame_size(kDefaultFrameSize);
 	set_frame_overlap(kDefaultFrameSize - 6000);
