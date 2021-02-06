@@ -19,7 +19,7 @@
 namespace chromaprint {
 
 static const int MIN_FREQ = 28;
-static const int MAX_FREQ = 3520;
+static const int MAX_FREQ = 10504;
 
 Fingerprinter::Fingerprinter(FingerprinterConfiguration *config) {
 	if (!config) {

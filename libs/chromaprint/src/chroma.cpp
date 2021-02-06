@@ -10,7 +10,7 @@
 
 namespace chromaprint {
 
-static const int NUM_BANDS = 12;
+static const int NUM_BANDS = 36;
 
 inline double FreqToOctave(double freq, double base = 440.0 / 16.0)
 {
