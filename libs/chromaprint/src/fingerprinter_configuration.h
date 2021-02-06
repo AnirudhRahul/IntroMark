@@ -10,7 +10,7 @@
 
 namespace chromaprint {
 
-static const int DEFAULT_SAMPLE_RATE = 48000;
+static int DEFAULT_SAMPLE_RATE = 48000;
 
 class FingerprinterConfiguration
 {
@@ -180,8 +180,9 @@ public:
 	FingerprinterConfigurationTest5();
 };
 
-inline FingerprinterConfiguration *CreateFingerprinterConfiguration(int algorithm)
+inline FingerprinterConfiguration *CreateFingerprinterConfiguration(int algorithm, int sample_rate)
 {
+	DEFAULT_SAMPLE_RATE = sample_rate;
 	switch (algorithm) {
 	case CHROMAPRINT_ALGORITHM_TEST1:
 		return new FingerprinterConfigurationTest1();

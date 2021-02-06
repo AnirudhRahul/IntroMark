@@ -152,7 +152,7 @@ int main()
     ChromaprintContext *ctx;
     int index = 0;
     for(RawAudio cur : audioList){
-        ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5);
+        ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, cur.sample_rate);
         chromaprint_start(ctx, cur.sample_rate, cur.channels);
         chromaprint_feed(ctx, (cur.arr + startShift*channels), cur.length - (startShift+endShift)*channels);
         freeAudio(cur);
