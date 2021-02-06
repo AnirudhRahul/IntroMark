@@ -121,8 +121,8 @@ int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
 
 int main()
 {
-    const char* path1 = "../test_audio/hori1.wav";
-    const char* path2 = "../test_audio/hori3.wav";
+    const char* path1 = "../../test_audio/hori1.wav";
+    const char* path2 = "../../test_audio/hori3.wav";
     RawAudio audio1 = audioFileToArr(path1);
     RawAudio audio2 = audioFileToArr(path2);
     cout << "Read audio\n";
