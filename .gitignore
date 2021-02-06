@@ -34,3 +34,4 @@
 # Build directory
 build
 gitignored
+test_audio
