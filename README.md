@@ -17,7 +17,9 @@ brew install fftw
 
 
 Then move into the build folder ```cd build```
+
 If you installed fftw3 run ```cmake .. -DFFT_LIB=fftw3```
+
 Or use kissFFT ```cmake .. -DFFT_LIB=kissfft```
 
 Then build and run the binary with:
