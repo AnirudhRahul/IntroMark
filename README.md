@@ -14,11 +14,9 @@ MacOS:
 brew install fftw
 ```
 
-If you are using windows I would reccomend running this on WSL.
 
-```
-cd build
-```
+
+Then move into the build folder ```cd build```
 If you installed fftw3 run ```cmake .. -DFFT_LIB=fftw3```
 Or use kissFFT ```cmake .. -DFFT_LIB=kissfft```
 
