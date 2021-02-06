@@ -121,8 +121,8 @@ int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
 
 int main()
 {
-    const char* path1 = "../test_audio/normal_ep1.wav";
-    const char* path2 = "../test_audio/normal_ep2.wav";
+    const char* path1 = "../test_audio/hori1.wav";
+    const char* path2 = "../test_audio/hori3.wav";
     RawAudio audio1 = audioFileToArr(path1);
     RawAudio audio2 = audioFileToArr(path2);
     cout << "Read audio\n";
@@ -131,6 +131,9 @@ int main()
     ASSERT(channels == audio2.channels, "Tracks must have the same number of channels");
     int sample_rate = audio1.sample_rate;
     ASSERT(sample_rate == audio2.sample_rate, "Tracks must have the same sample rate");
+
+    cout << "CHANNELS " << channels << endl;
+    cout << "SAMPLE RATE " << sample_rate << endl;
 
     int startShift = getCommonStart(audio1.arr, audio2.arr, audio1.length, audio2.length, channels);
     ASSERT(startShift!=-1, "Audio files are the same");
@@ -233,11 +236,17 @@ int main()
                 break;
         }
     }
-    // Filter out smaller because they're likely inaccurate
-    for(int i = common_substring_list.size(); i>=0; i--){
-        if(common_substring_list[i].length <= delay_item)
-            common_substring_list.erase(common_substring_list.begin() + i);
-    }
+    cout << "MID LEN  " << common_substring_list.size() << endl;
+    // // Filter out smaller because they're likely inaccurate
+    // for(int i = common_substring_list.size(); i>=0; i--){
+    //     if(common_substring_list[i].length <= delay_item)
+    //         common_substring_list.erase(common_substring_list.begin() + i);
+    // }
+    common_substring_list.erase(
+    std::remove_if(common_substring_list.begin(), common_substring_list.end(),
+        [delay_item](const CommonSubArr & o) { return o.length <= delay_item; }),
+    common_substring_list.end());
+
     cout << "NEW LEN " << common_substring_list.size() << endl; 
 
     // Add delay
