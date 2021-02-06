@@ -32,6 +32,6 @@
 *.app
 
 # Build directory
-build
+cpp/build
 gitignored
 test_audio
