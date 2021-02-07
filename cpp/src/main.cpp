@@ -75,6 +75,7 @@ double compare_gray_codes(uint32_t a, uint32_t b){
 
 struct RawAudio{
     int16_t* arr;
+    char* filename;
     int sample_rate;
     int channels;
     int length;
@@ -98,7 +99,7 @@ RawAudio audioFileToArr(const char * path){
         }
     }
 
-    return (struct RawAudio){arr, (int)audioFile.getSampleRate(), channels, samples*channels};
+    return (struct RawAudio){arr, path, (int)audioFile.getSampleRate(), channels, samples*channels};
 }
 void freeAudio(RawAudio input){
     delete[] input.arr;
@@ -257,14 +258,6 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
             if(endA >= chroma[0].size || endB >= combinedLen){
                 continue;
             }
-
-            // for(int i=0;i<delay_item;i++){
-            //     int indexA = common.startA + common.length + i;
-            //     int indexB = common.startB + common.length + i;
-            //     cout << compareIndices(indexA, indexB) << ", ";
-            // }
-            // cout << endl;
-
         }
 
         double delay_sec = (double) delay / sample_rate;
@@ -292,12 +285,12 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
 
         cout << "\n\n\n";
 
-        cout << pathList[0] << endl;
+        cout << audioList[0].filename << endl;
         for(TimeRange cur:listA){
             cout << cur.start << " to " << cur.end << endl;
         }
 
-        cout << pathList[1] << endl;
+        cout << audioList[1].filename << endl;
         for(TimeRange cur:listB){
             cout << cur.start << " to " << cur.end << endl;
         }
