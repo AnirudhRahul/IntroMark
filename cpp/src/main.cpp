@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <map>
 #include <vector>
+#include <cstring>
+
 
 using std::cout; using std::endl; using std::sort; using std::tuple; using std::vector;
 
@@ -17,19 +19,12 @@ using std::cout; using std::endl; using std::sort; using std::tuple; using std::
         if (! (condition)) { \
             std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
                       << " line " << __LINE__ << ": " << message << std::endl; \
-            std::terminate(); \
+            exit(EXIT_FAILURE); \
         } \
     } while (false)
 #else
 #   define ASSERT(condition, message) do { } while (false)
 #endif
-
-struct RawAudio{
-    int16_t* arr;
-    int sample_rate;
-    int channels;
-    int length;
-};
 
 struct ChromaArr{
     uint32_t* arr;
@@ -78,9 +73,17 @@ double compare_gray_codes(uint32_t a, uint32_t b){
     return matches/16;
 }
 
+struct RawAudio{
+    int16_t* arr;
+    int sample_rate;
+    int channels;
+    int length;
+};
 RawAudio audioFileToArr(const char * path){
     AudioFile<float> audioFile;
-    audioFile.load(path);
+    if(!audioFile.load(path)){
+        exit (EXIT_FAILURE);
+    }
     
     int samples = audioFile.getNumSamplesPerChannel();
     int channels = audioFile.getNumChannels();
@@ -97,249 +100,253 @@ RawAudio audioFileToArr(const char * path){
 
     return (struct RawAudio){arr, (int)audioFile.getSampleRate(), channels, samples*channels};
 }
-
 void freeAudio(RawAudio input){
     delete[] input.arr;
 }
 
-int getCommonStart(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
-    for(int i=0; i<std::min(sizeA, sizeB); i++){
-        if(a[i]!=b[i])
-            return i/channels;
+int getCommonPrefix(RawAudio audioA, RawAudio audioB){
+    for(int i=0; i<std::min(audioA.length, audioB.length); i++){
+        if(audioA.arr[i]!=audioB.arr[i])
+            return i/audioA.channels;
     }
-    return -1;
 }
-
-int getCommonEnd(int16_t* a, int16_t* b, int sizeA, int sizeB, int channels){
-    int tailA = sizeA-1; int tailB = sizeB-1;
+int getCommonSuffix(RawAudio audioA, RawAudio audioB){
+    int tailA = audioA.length-1; int tailB = audioB.length-1;
     int len = 0;
-    while(tailA>=0 && tailB>=0 && a[tailA] == b[tailB]){
+    while(tailA>=0 && tailB>=0 && audioA.arr[tailA] == audioB.arr[tailB]){
         tailA--; tailB--; len++;
     }
-    return len/channels;
+    return len/audioA.channels;
 }
 
-int main()
-{
-    const char* path1 = "../../test_audio/hori1.wav";
-    const char* path2 = "../../test_audio/hori3.wav";
-    RawAudio audio1 = audioFileToArr(path1);
-    RawAudio audio2 = audioFileToArr(path2);
-    cout << "Read audio\n";
+struct TimeRange{
+    double start;
+    double end;
+};
+bool sortByStart(TimeRange a, TimeRange b){return a.start < b.start;}
+// Only reads 2 files at a time to lower memory usage
+int findSubstrings(vector<char*> pathList, bool verbose = false){
 
-    int channels = audio1.channels;
-    ASSERT(channels == audio2.channels, "Tracks must have the same number of channels");
-    int sample_rate = audio1.sample_rate;
-    ASSERT(sample_rate == audio2.sample_rate, "Tracks must have the same sample rate");
-
-    cout << "CHANNELS " << channels << endl;
-    cout << "SAMPLE RATE " << sample_rate << endl;
-
-    int startShift = getCommonStart(audio1.arr, audio2.arr, audio1.length, audio2.length, channels);
-    ASSERT(startShift!=-1, "Audio files are the same");
-    int endShift = getCommonEnd(audio1.arr, audio2.arr, audio1.length, audio2.length, channels);
-    double startShiftsec = (double) startShift/sample_rate;
-    cout << "START Shift " << startShiftsec << endl;
-    double endShiftsec = (double) endShift/sample_rate;
-    cout << "END Shift " << endShiftsec << endl;
-
-
-
-    ChromaArr chroma[2];
-    RawAudio audioList[2] = {audio1, audio2};
-    int delay, item_duration;
-
+    int renewIndex = -1;
+    RawAudio audioList[2]; ChromaArr chroma[2];
+    int channels, sample_rate;
     ChromaprintContext *ctx;
-    int index = 0;
-    for(RawAudio cur : audioList){
-        ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, cur.sample_rate);
-        chromaprint_start(ctx, cur.sample_rate, cur.channels);
-        chromaprint_feed(ctx, (cur.arr + startShift*channels), cur.length - (startShift+endShift)*channels);
-        freeAudio(cur);
-        chromaprint_finish(ctx);
-        if(index==0){
-            delay = chromaprint_get_delay(ctx);
-            item_duration = chromaprint_get_item_duration(ctx);
+    int delay=-1; int item_duration=-1;
+
+
+    for(int pathIndex=1; pathIndex < pathList.size(); pathIndex++){
+        if(renewIndex<0){
+            audioList[0] = audioFileToArr(pathList[pathIndex-1]);
+            channels = audioList[0].channels; sample_rate = audioList[0].sample_rate;
+            audioList[1] = audioFileToArr(pathList[pathIndex]);
         }
         else{
-            ASSERT(delay == chromaprint_get_delay(ctx), "Delay Mismatch\n");
-            ASSERT(item_duration == chromaprint_get_item_duration(ctx), "Item Duration Mismatch\n");
+            audioList[renewIndex] = audioFileToArr(pathList[pathIndex]);
         }
-        chroma[index]=(struct ChromaArr){nullptr, 0};
-        chromaprint_get_raw_fingerprint(ctx, &chroma[index].arr, &chroma[index].size);
-        chromaprint_free(ctx);
-        index++;
-    }
+        for(int k=0;k<2;k++){
+            ASSERT(channels == audioList[k].channels, "Tracks must have the same number of channels");
+            ASSERT(sample_rate == audioList[k].sample_rate, "Tracks must have the same sample rate");
+        }
 
-    cout << "Chromaprint done!\n";
-
-    int combinedLen = chroma[0].size + chroma[1].size + 1;
-    int offset = chroma[0].size + 1;
-    uint32_t * merged = new uint32_t[combinedLen];
-    std::copy(chroma[0].arr, chroma[0].arr + chroma[0].size, merged);
-    delete[] chroma[0].arr;
-    std::copy(chroma[1].arr, chroma[1].arr + chroma[1].size, merged + offset);
-    delete[] chroma[1].arr;
-
-    int max; int* compressed; uint32_t* rank_to_val;
-    std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
-    // Sentinel in between the 2 strings
-    compressed[chroma[0].size] = 0;
-    cout << "Finished compressing\n";
-
-    int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
-    cout << "Made suffix array\n";
-
-    int* rankArr = create_rank_arr(suffixArr, combinedLen);
-    // lcp in range from [1, combinedLen)
-    int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
-    cout << "Made LCP array\n";
-
-    auto compareIndices = [compressed, rank_to_val](int a, int b) {
-        return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
-    };
-    auto toSec = [item_duration, sample_rate](int in) {
-        return (double) in * item_duration / sample_rate;
-    };
-
-    int threshold = (int) (toSec(1));
-    vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
-    cout << "OLD LEN " << common_substring_list.size() << endl;
-    
-    int delay_item = delay/item_duration;
-    int mergeThreshold = 2*delay_item;
-    int offsetThreshold = std::max(2, (int)(0.1 * sample_rate / item_duration));
-    for(int i=common_substring_list.size()-1;i>0;i--){
-        CommonSubArr next = common_substring_list[i]; 
-        for(int k=i-1; k>=0; k--){
-            CommonSubArr cur = common_substring_list[k];
-            int gap = next.startA - cur.startA - cur.length;
-            if(gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
-                if(gap>0){
-                    double match_measure = 0;
-                    for(int j=1; j<=gap; j++){
-                        match_measure+=compareIndices(next.startA-j, next.startB-j);
-                    }
-                    if(match_measure/gap < 0.7){
-                        continue;
-                    }
+        int startShift = getCommonPrefix(audioList[0], audioList[1]); ASSERT(startShift!=-1, "Audio files are the same");
+        int endShift = getCommonSuffix(audioList[0], audioList[1]);
+        double startShiftsec = (double) startShift/sample_rate; double endShiftsec = (double) endShift/sample_rate;
+        cout << "START Shift " << startShiftsec << endl << "END Shift " << endShiftsec << endl;
+        
+        for(int k=0; k<2; k++){
+            if(renewIndex==k || renewIndex<0){
+                ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, sample_rate);
+                chromaprint_start(ctx, sample_rate, channels);
+                chromaprint_feed(ctx, (audioList[k].arr + startShift*channels), audioList[k].length - (startShift+endShift)*channels);
+                chromaprint_finish(ctx);
+                freeAudio(audioList[k]);
+                if(delay<0){
+                    delay = chromaprint_get_delay(ctx);
+                    item_duration = chromaprint_get_item_duration(ctx);
                 }
-                common_substring_list[i] = (struct CommonSubArr){
-                    cur.startA,
-                    cur.startB,
-                    std::min(next.startA + next.length - cur.startA, next.startB + next.length - cur.startB)
-                };
-                common_substring_list.erase(common_substring_list.begin()+k);
-                break;
+                ASSERT(delay == chromaprint_get_delay(ctx), "Delay Mismatch\n");
+                ASSERT(item_duration == chromaprint_get_item_duration(ctx), "Item Duration Mismatch\n");
+                
+                chroma[k]=(struct ChromaArr){nullptr, 0};
+                chromaprint_get_raw_fingerprint(ctx, &chroma[k].arr, &chroma[k].size);
+                chromaprint_free(ctx);
             }
-            if(next.startA-cur.startA>=mergeThreshold)
-                break;
         }
-    }
-    cout << "MID LEN  " << common_substring_list.size() << endl;
-    // // Filter out smaller because they're likely inaccurate
-    // for(int i = common_substring_list.size(); i>=0; i--){
-    //     if(common_substring_list[i].length <= delay_item)
-    //         common_substring_list.erase(common_substring_list.begin() + i);
-    // }
-    common_substring_list.erase(
-    std::remove_if(common_substring_list.begin(), common_substring_list.end(),
-        [delay_item](const CommonSubArr & o) { return o.length <= delay_item; }),
-    common_substring_list.end());
+        cout << "Chromaprint done!\n";
 
-    cout << "NEW LEN " << common_substring_list.size() << endl; 
+        int combinedLen = chroma[0].size + chroma[1].size + 1;
+        int offset = chroma[0].size + 1;
+        uint32_t * merged = new uint32_t[combinedLen];
+        std::copy(chroma[0].arr, chroma[0].arr + chroma[0].size, merged);
+        if(renewIndex==0)
+            delete[] chroma[0].arr;
+        std::copy(chroma[1].arr, chroma[1].arr + chroma[1].size, merged + offset);
+        if(renewIndex==1)
+            delete[] chroma[1].arr;
 
-    // Add delay
-    for(CommonSubArr common: common_substring_list){
-        common.length += delay_item;
-        int endA = common.startA + common.length;
-        int endB = common.startB + common.length;
-        if(endA >= chroma[0].size || endB >= combinedLen){
-            continue;
-        }
+        int max; int* compressed; uint32_t* rank_to_val;
+        std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
+        delete[] rank_to_val; 
+        // Sentinel in between the 2 strings
+        compressed[chroma[0].size] = 0;
+        cout << "Finished compressing\n";
+        int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
+        cout << "Made suffix array\n";
+        int* rankArr = create_rank_arr(suffixArr, combinedLen);
+        // lcp in range from [1, combinedLen)
+        int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
+        delete[] compressed; delete[] rankArr;
+        cout << "Made LCP array\n";
 
-        for(int i=0;i<delay_item;i++){
-            int indexA = common.startA + common.length + i;
-            int indexB = common.startB + common.length + i;
-            cout << compareIndices(indexA, indexB) << ", ";
-        }
-        cout << endl;
-
-        // int badMatches = 0;
-        // int lengthToAdd = 0;
-        // for(int i=0;i<delay_item;i++){
-        //     int indexA = common.startA + common.length + i;
-        //     int indexB = common.startB + common.length + i;
-        //     lengthToAdd = i;
-        //     if(compareIndices(indexA, indexB) < 0.8){
-        //         badMatches+=1;
-        //     }
-        //     else if(badMatches>0){
-        //         badMatches--;
-        //     }
-
-        //     if(badMatches==4){
-        //         break;
-        //     }
-        // }
-        // while(lengthToAdd>0){
-        //     int indexA = common.startA + common.length + lengthToAdd;
-        //     int indexB = common.startB + common.length + lengthToAdd;
-        //     if(compareIndices(indexA, indexB) < 0.8){
-        //         lengthToAdd--;
-        //     }
-        //     else{
-        //         break;
-        //     }
-        // }
-        // cout << "Matched " << lengthToAdd << " out of total " << delay_item << endl;
-        // common.length+=lengthToAdd;
-    }
-
-
-    double delay_sec = (double) delay / sample_rate;
-    double secsA = toSec(chroma[0].size) + delay_sec;
-    double secsB = toSec(chroma[1].size) + delay_sec;
-    cout << "END OF A: " << secsA << endl;
-    cout << "END OF B: " << secsB << endl;
-
-    struct TimeRange{
-        double start;
-        double end;
-    };
-    vector<TimeRange> listA; vector<TimeRange> listB;
-    listA.push_back((struct TimeRange){0, startShiftsec}); 
-    listB.push_back((struct TimeRange){0, startShiftsec});
-    for(CommonSubArr common: common_substring_list){
-        TimeRange curA = (struct TimeRange){
-            startShiftsec + toSec(common.startA),
-            startShiftsec + toSec(common.startA + common.length) + 8
+        // auto compareIndices = [compressed, rank_to_val](int a, int b) {
+        //     return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
+        // };
+        auto toSec = [item_duration, sample_rate](int in) {
+            return (double) in * item_duration / sample_rate;
         };
-        listA.push_back(curA);
 
-        TimeRange curB = (struct TimeRange){
-            startShiftsec + toSec(common.startB - offset),
-            startShiftsec + toSec(common.startB - offset + common.length) + 8
-        };
-        listB.push_back(curB);
+        int threshold = (int) (toSec(1));
+        vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
+        delete[] suffixArr;
+        delete[] lcpArr;
+        cout << "OLD LEN " << common_substring_list.size() << endl;
+        
+        int delay_item = delay/item_duration;
+        int mergeThreshold = 2*delay_item;
+        int offsetThreshold = std::max(2, (int)(0.1 * sample_rate / item_duration));
+        for(int i=common_substring_list.size()-1;i>0;i--){
+            CommonSubArr next = common_substring_list[i]; 
+            for(int k=i-1; k>=0; k--){
+                CommonSubArr cur = common_substring_list[k];
+                int gap = next.startA - cur.startA - cur.length;
+                if(gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
+                    // if(gap>0){
+                    //     double match_measure = 0;
+                    //     for(int j=1; j<=gap; j++){
+                    //         match_measure+=compareIndices(next.startA-j, next.startB-j);
+                    //     }
+                    //     if(match_measure/gap < 0.7){
+                    //         continue;
+                    //     }
+                    // }
+                    common_substring_list[i] = (struct CommonSubArr){
+                        cur.startA,
+                        cur.startB,
+                        std::min(next.startA + next.length - cur.startA, next.startB + next.length - cur.startB)
+                    };
+                    common_substring_list.erase(common_substring_list.begin()+k);
+                    break;
+                }
+                if(next.startA-cur.startA>=mergeThreshold)
+                    break;
+            }
+        }
+        cout << "MID LEN  " << common_substring_list.size() << endl;
+        common_substring_list.erase(
+        std::remove_if(common_substring_list.begin(), common_substring_list.end(),
+            [delay_item](const CommonSubArr & o) { return o.length <= delay_item; }),
+        common_substring_list.end());
+
+        cout << "NEW LEN " << common_substring_list.size() << endl; 
+
+        // Add delay
+        for(CommonSubArr common: common_substring_list){
+            common.length += delay_item;
+            int endA = common.startA + common.length;
+            int endB = common.startB + common.length;
+            if(endA >= chroma[0].size || endB >= combinedLen){
+                continue;
+            }
+
+            // for(int i=0;i<delay_item;i++){
+            //     int indexA = common.startA + common.length + i;
+            //     int indexB = common.startB + common.length + i;
+            //     cout << compareIndices(indexA, indexB) << ", ";
+            // }
+            // cout << endl;
+
+        }
+
+        double delay_sec = (double) delay / sample_rate;
+        double secsA = toSec(chroma[0].size) + delay_sec;
+        double secsB = toSec(chroma[1].size) + delay_sec;
+
+        vector<TimeRange> listA; vector<TimeRange> listB;
+        listA.push_back((struct TimeRange){0, startShiftsec}); 
+        listB.push_back((struct TimeRange){0, startShiftsec});
+        for(CommonSubArr common: common_substring_list){
+            TimeRange curA = (struct TimeRange){
+                startShiftsec + toSec(common.startA),
+                startShiftsec + toSec(common.startA + common.length) + 8
+            };
+            listA.push_back(curA);
+
+            TimeRange curB = (struct TimeRange){
+                startShiftsec + toSec(common.startB - offset),
+                startShiftsec + toSec(common.startB - offset + common.length) + 8
+            };
+            listB.push_back(curB);
+        }
+        listA.push_back((struct TimeRange){secsA - endShiftsec, secsA});
+        listB.push_back((struct TimeRange){secsB - endShiftsec, secsB});
+
+        cout << "\n\n\n";
+
+        cout << pathList[0] << endl;
+        for(TimeRange cur:listA){
+            cout << cur.start << " to " << cur.end << endl;
+        }
+
+        cout << pathList[1] << endl;
+        for(TimeRange cur:listB){
+            cout << cur.start << " to " << cur.end << endl;
+        }
+
+        renewIndex = (renewIndex+1)%2;
     }
-    listA.push_back((struct TimeRange){secsA - endShiftsec, secsA});
-    listB.push_back((struct TimeRange){secsB - endShiftsec, secsB});
+}
 
-    cout << "DELAY: " << delay_sec << endl;
-    cout << "SINGLE SAMPLE LENGTH: " << toSec(1) << endl;
+/*
+Command line options
+    -f output to file
+    -v verbose logs
 
-    cout << "\n\n\n";
+The rest of the arguements should be a list of files in the order you want them compared.
 
-    cout << path1 << endl;
-    for(TimeRange cur:listA){
-        cout << cur.start << " to " << cur.end << endl;
+*/
+int main(int argc, char* argv[])
+{
+    vector<char*> pathList;
+    char* outputFile;
+    bool fileOutput = false;
+    bool verbose = false;
+    for(int i=1;i<argc;i++){
+        if(!strcmp(argv[i],"-f") || !strcmp(argv[i],"--file")){
+            if(i+1>=argc){
+                cout << "Must specify a filename when using -f\n";
+                return EXIT_FAILURE;
+            }
+            i++;
+            fileOutput = true;
+            outputFile = argv[i];
+        }
+        else if(!strcmp(argv[i],"-v") || !strcmp(argv[i],"--verbose")){
+            verbose = true;
+        }
+        else{
+            pathList.push_back(argv[i]);
+        }
     }
 
-    cout << path2 << endl;
-    for(TimeRange cur:listB){
-        cout << cur.start << " to " << cur.end << endl;
+    if(pathList.size()<2){
+        cout << "Not enough paths specified";
+        return EXIT_FAILURE;
     }
 
+    findSubstrings(pathList, verbose);
+
+    // const char* path1 = "../../test_audio/hori1.wav";
+    // const char* path2 = "../../test_audio/hori3.wav";
+    
     return 0;
 }
