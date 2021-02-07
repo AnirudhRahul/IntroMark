@@ -73,13 +73,22 @@ double compare_gray_codes(uint32_t a, uint32_t b){
     return matches/16;
 }
 
+struct TimeRange{
+    double start;
+    double end;
+};
+bool sortByStart(TimeRange a, TimeRange b){return a.start < b.start;}
+
 struct RawAudio{
     int16_t* arr;
+    vector<TimeRange> silence;
     char* filename;
     int sample_rate;
     int channels;
     int length;
 };
+
+double silenceThreshold = 1;
 RawAudio audioFileToArr(char * path){
     AudioFile<float> audioFile;
     if(!audioFile.load(path)){
@@ -88,18 +97,38 @@ RawAudio audioFileToArr(char * path){
     
     int samples = audioFile.getNumSamplesPerChannel();
     int channels = audioFile.getNumChannels();
+    int sample_rate = (int)audioFile.getSampleRate();
 
     int16_t* arr = new int16_t[samples*channels];
+    vector<TimeRange> silentRanges;
 
     int index = 0;
+    int silenceStart=0; int silenceEnd=0;
     for (int i = 0; i < samples; i++){
+        double volume = 0;
         for(int j = 0; j < channels; j++){
+            volume += abs(audioFile.samples[j][i]);
             arr[index] = round(audioFile.samples[j][i] * 32767); 
             index++;
         }
+        silenceEnd++;
+        if(volume/channels > 0.01){
+            if(silenceEnd - silenceStart > sample_rate*silenceThreshold){
+                silentRanges.push_back((struct TimeRange){
+                    (double) silenceStart/sample_rate, 
+                    (double) silenceEnd/sample_rate 
+                });
+            }
+            silenceStart = silenceEnd;
+        }
     }
 
-    return (struct RawAudio){arr, path, (int)audioFile.getSampleRate(), channels, samples*channels};
+    for(TimeRange cur: silentRanges){
+        cout << cur.start << " to " << cur.end << endl;
+    }
+    cout << "\n\n";
+
+    return (struct RawAudio){arr, silentRanges, path, sample_rate, channels, samples*channels};
 }
 void freeAudio(RawAudio input){
     delete[] input.arr;
@@ -120,11 +149,6 @@ int getCommonSuffix(RawAudio audioA, RawAudio audioB){
     return len/audioA.channels;
 }
 
-struct TimeRange{
-    double start;
-    double end;
-};
-bool sortByStart(TimeRange a, TimeRange b){return a.start < b.start;}
 // Only reads 2 files at a time to lower memory usage
 int findSubstrings(vector<char*> pathList, bool verbose = false){
 
@@ -133,7 +157,6 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
     int channels, sample_rate;
     ChromaprintContext *ctx;
     int delay=-1; int item_duration=-1;
-
 
     for(int pathIndex=1; pathIndex < pathList.size(); pathIndex++){
         if(renewIndex<0){
