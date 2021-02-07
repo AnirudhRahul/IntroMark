@@ -1,0 +1,26 @@
+{
+  "name": "intro-mark",
+  "version": "1.0.0",
+  "description": "Mark repeating segments in audio and video files",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AnirudhRahul/IntroMark.git"
+  },
+  "keywords": [
+    "video",
+    "audio",
+    "video-processing",
+    "audio-processing",
+    "mkv"
+  ],
+  "author": "Anirudh Rahul",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AnirudhRahul/IntroMark/issues"
+  },
+  "homepage": "https://github.com/AnirudhRahul/IntroMark#readme"
+}
