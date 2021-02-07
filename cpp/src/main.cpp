@@ -80,7 +80,7 @@ struct RawAudio{
     int channels;
     int length;
 };
-RawAudio audioFileToArr(const char * path){
+RawAudio audioFileToArr(char * path){
     AudioFile<float> audioFile;
     if(!audioFile.load(path)){
         exit (EXIT_FAILURE);
@@ -187,7 +187,7 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
 
         int max; int* compressed; uint32_t* rank_to_val;
         std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
-        delete[] rank_to_val; 
+        // delete[] rank_to_val; 
         // Sentinel in between the 2 strings
         compressed[chroma[0].size] = 0;
         cout << "Finished compressing\n";
@@ -196,12 +196,12 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
         int* rankArr = create_rank_arr(suffixArr, combinedLen);
         // lcp in range from [1, combinedLen)
         int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
-        delete[] compressed; delete[] rankArr;
+        // delete[] compressed; delete[] rankArr;
         cout << "Made LCP array\n";
 
-        // auto compareIndices = [compressed, rank_to_val](int a, int b) {
-        //     return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
-        // };
+        auto compareIndices = [compressed, rank_to_val](int a, int b) {
+            return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
+        };
         auto toSec = [item_duration, sample_rate](int in) {
             return (double) in * item_duration / sample_rate;
         };
@@ -213,23 +213,23 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
         cout << "OLD LEN " << common_substring_list.size() << endl;
         
         int delay_item = delay/item_duration;
-        int mergeThreshold = 2*delay_item;
-        int offsetThreshold = std::max(2, (int)(0.1 * sample_rate / item_duration));
+        int mergeThreshold = 4*delay_item;
+        int offsetThreshold = std::max(2, (int)(0.25 * sample_rate / item_duration));
         for(int i=common_substring_list.size()-1;i>0;i--){
             CommonSubArr next = common_substring_list[i]; 
             for(int k=i-1; k>=0; k--){
                 CommonSubArr cur = common_substring_list[k];
                 int gap = next.startA - cur.startA - cur.length;
                 if(gap<=mergeThreshold && abs(cur.startA - cur.startB - (next.startA - next.startB)) <= offsetThreshold){
-                    // if(gap>0){
-                    //     double match_measure = 0;
-                    //     for(int j=1; j<=gap; j++){
-                    //         match_measure+=compareIndices(next.startA-j, next.startB-j);
-                    //     }
-                    //     if(match_measure/gap < 0.7){
-                    //         continue;
-                    //     }
-                    // }
+                    if(gap>0){
+                        double match_measure = 0;
+                        for(int j=1; j<=gap; j++){
+                            match_measure+=compareIndices(next.startA-j, next.startB-j);
+                        }
+                        if(match_measure/gap < 0.7){
+                            continue;
+                        }
+                    }
                     common_substring_list[i] = (struct CommonSubArr){
                         cur.startA,
                         cur.startB,
