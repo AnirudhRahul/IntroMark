@@ -20,8 +20,7 @@ Note that IntroMark makes use of the coroutine feature from c++20, so you will n
 Compilers that I have found to work are
 * Apple Clang 12.0.0 on MacOS
 * gcc-8/g++-8 (Ubuntu 8.4.0-1ubuntu1~18.04) 8.4.0 on WSL Ubuntu 18.04
-
-[Instructions for installing gcc-8 on ubuntu](https://askubuntu.com/a/1087116/1171839)
+  * [Instructions for installing gcc-8 on ubuntu](https://askubuntu.com/a/1087116/1171839)
 
 
 Then move into the build folder ```cd build```
