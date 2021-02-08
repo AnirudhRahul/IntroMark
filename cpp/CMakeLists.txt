@@ -6,8 +6,10 @@ project(IntroMark
     DESCRIPTION "Mark intros and endings of videos"
 )
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_compile_options(-fcoroutines-ts)
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs")
 

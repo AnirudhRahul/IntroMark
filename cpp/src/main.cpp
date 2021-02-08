@@ -8,7 +8,8 @@
 #include <map>
 #include <vector>
 #include <cstring>
-
+#include <experimental/coroutine>
+#include <generator.hpp>
 
 using std::cout; using std::endl; using std::sort; using std::tuple; using std::vector;
 
@@ -86,9 +87,10 @@ struct RawAudio{
     int sample_rate;
     int channels;
     int length;
+    double lengthSec;
 };
 
-double silenceThreshold = 1;
+double silenceThreshold = 0.5;
 RawAudio audioFileToArr(char * path){
     AudioFile<float> audioFile;
     if(!audioFile.load(path)){
@@ -123,12 +125,12 @@ RawAudio audioFileToArr(char * path){
         }
     }
 
-    for(TimeRange cur: silentRanges){
-        cout << cur.start << " to " << cur.end << endl;
-    }
-    cout << "\n\n";
+    // for(TimeRange cur: silentRanges){
+    //     cout << cur.start << " to " << cur.end << endl;
+    // }
+    // cout << "\n\n";
 
-    return (struct RawAudio){arr, silentRanges, path, sample_rate, channels, samples*channels};
+    return (struct RawAudio){arr, silentRanges, path, sample_rate, channels, samples*channels, (double)samples/sample_rate};
 }
 void freeAudio(RawAudio input){
     delete[] input.arr;
@@ -150,7 +152,7 @@ int getCommonSuffix(RawAudio audioA, RawAudio audioB){
 }
 
 // Only reads 2 files at a time to lower memory usage
-int findSubstrings(vector<char*> pathList, bool verbose = false){
+cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = false){
 
     int renewIndex = -1;
     RawAudio audioList[2]; ChromaArr chroma[2];
@@ -160,9 +162,8 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
 
     for(int pathIndex=1; pathIndex < pathList.size(); pathIndex++){
         if(renewIndex<0){
-            audioList[0] = audioFileToArr(pathList[pathIndex-1]);
+            audioList[0] = audioFileToArr(pathList[pathIndex-1]); audioList[1] = audioFileToArr(pathList[pathIndex]);
             channels = audioList[0].channels; sample_rate = audioList[0].sample_rate;
-            audioList[1] = audioFileToArr(pathList[pathIndex]);
         }
         else{
             audioList[renewIndex] = audioFileToArr(pathList[pathIndex]);
@@ -183,7 +184,8 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
                 chromaprint_start(ctx, sample_rate, channels);
                 chromaprint_feed(ctx, (audioList[k].arr + startShift*channels), audioList[k].length - (startShift+endShift)*channels);
                 chromaprint_finish(ctx);
-                freeAudio(audioList[k]);
+                if(renewIndex==k || (renewIndex<0 && k==0))
+                    freeAudio(audioList[k]);
                 if(delay<0){
                     delay = chromaprint_get_delay(ctx);
                     item_duration = chromaprint_get_item_duration(ctx);
@@ -202,11 +204,8 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
         int offset = chroma[0].size + 1;
         uint32_t * merged = new uint32_t[combinedLen];
         std::copy(chroma[0].arr, chroma[0].arr + chroma[0].size, merged);
-        if(renewIndex==0)
-            delete[] chroma[0].arr;
         std::copy(chroma[1].arr, chroma[1].arr + chroma[1].size, merged + offset);
-        if(renewIndex==1)
-            delete[] chroma[1].arr;
+        delete[] chroma[(renewIndex+1)%2].arr;
 
         int max; int* compressed; uint32_t* rank_to_val;
         std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
@@ -237,7 +236,7 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
         
         int delay_item = delay/item_duration;
         int mergeThreshold = 5*delay_item;
-        int offsetThreshold = std::max(2, (int)(0.25 * sample_rate / item_duration));
+        int offsetThreshold = std::max(2, (int)(0.1 * sample_rate / item_duration));
         for(int i=common_substring_list.size()-1;i>0;i--){
             CommonSubArr next = common_substring_list[i]; 
             for(int k=i-1; k>=0; k--){
@@ -249,7 +248,7 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
                         for(int j=1; j<=gap; j++){
                             match_measure+=compareIndices(next.startA-j, next.startB-j);
                         }
-                        cout << match_measure/gap << " " << cur.startA << " " << next.startA << endl;
+                        // cout << match_measure/gap << " " << cur.startA << " " << next.startA << endl;
                         if(match_measure/gap < 0.75){
                             continue;
                         }
@@ -285,39 +284,33 @@ int findSubstrings(vector<char*> pathList, bool verbose = false){
             }
         }
 
-        double delay_sec = (double) delay / sample_rate;
-        double secsA = toSec(chroma[0].size) + delay_sec;
-        double secsB = toSec(chroma[1].size) + delay_sec;
+        vector<TimeRange> outputRanges[2];
+        for(int i=0;i<2;i++)
+            outputRanges[i].push_back((struct TimeRange){0, startShiftsec}); 
 
-        vector<TimeRange> listA; vector<TimeRange> listB;
-        listA.push_back((struct TimeRange){0, startShiftsec}); 
-        listB.push_back((struct TimeRange){0, startShiftsec});
         for(CommonSubArr common: common_substring_list){
             TimeRange curA = (struct TimeRange){
                 startShiftsec + toSec(common.startA),
                 startShiftsec + toSec(common.startA + common.length) + 8
             };
-            listA.push_back(curA);
+            outputRanges[0].push_back(curA);
 
             TimeRange curB = (struct TimeRange){
                 startShiftsec + toSec(common.startB - offset),
                 startShiftsec + toSec(common.startB - offset + common.length) + 8
             };
-            listB.push_back(curB);
+            outputRanges[1].push_back(curB);
         }
-        listA.push_back((struct TimeRange){secsA - endShiftsec, secsA});
-        listB.push_back((struct TimeRange){secsB - endShiftsec, secsB});
-
-        cout << "\n\n\n";
-
-        cout << audioList[0].filename << endl;
-        for(TimeRange cur:listA){
-            cout << cur.start << " to " << cur.end << endl;
+        for(int i=0;i<2;i++){
+            outputRanges[i].push_back((struct TimeRange){audioList[i].lengthSec - endShiftsec, audioList[i].lengthSec});
         }
-
-        cout << audioList[1].filename << endl;
-        for(TimeRange cur:listB){
-            cout << cur.start << " to " << cur.end << endl;
+        
+        if(renewIndex<0){
+            co_yield outputRanges[0];
+            co_yield outputRanges[1];
+        }
+        else{
+            co_yield outputRanges[renewIndex];
         }
 
         renewIndex = (renewIndex+1)%2;
@@ -361,7 +354,14 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    findSubstrings(pathList, verbose);
+    int index = 0;
+    for(vector<TimeRange> common : findSubstrings(pathList, verbose)){
+        cout << pathList[index] << endl;
+        for(TimeRange cur:common)
+            cout << cur.start << " to " << cur.end << endl;
+        index++;
+    }
+    cout << "PROCESSED " << index;
 
     // const char* path1 = "../../test_audio/hori1.wav";
     // const char* path2 = "../../test_audio/hori3.wav";
