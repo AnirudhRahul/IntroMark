@@ -8,8 +8,9 @@
 #include <map>
 #include <vector>
 #include <cstring>
-#include <coroutine.hpp>
-#include <generator.hpp>
+// #include <experimental/coroutine>
+// #include <coroutine.hpp>
+// #include <generator.hpp>
 
 using std::cout; using std::endl; using std::sort; using std::tuple; using std::vector;
 
@@ -83,8 +84,15 @@ struct RawAudio{
     int channels;
     int length;
     double lengthSec;
+    bool deleted;
 };
-
+void freeRawAudio(RawAudio* input){
+    if(!input->deleted){
+        delete[] input->arr;
+        input->silence.clear();
+        input->deleted = true;
+    }
+}
 double silenceThreshold = 0.5;
 RawAudio audioFileToArr(char * path){
     AudioFile<float> audioFile;
@@ -120,12 +128,9 @@ RawAudio audioFileToArr(char * path){
         }
     }
 
-    return (struct RawAudio){arr, silentRanges, path, sample_rate, channels, samples*channels, (double)samples/sample_rate};
+    return (struct RawAudio){arr, silentRanges, path, sample_rate, channels, samples*channels, (double)samples/sample_rate, false};
 }
-void freeAudio(RawAudio input){
-    delete[] input.arr;
-    input.silence.clear();
-}
+
 
 int getCommonPrefix(RawAudio audioA, RawAudio audioB){
     for(int i=0; i<std::min(audioA.length, audioB.length); i++){
@@ -147,10 +152,17 @@ int getCommonSuffix(RawAudio audioA, RawAudio audioB){
 struct ChromaArr{
     uint32_t* arr;
     int size;
+    bool deleted;
 };
+void freeChromaArr(ChromaArr* input){
+    if(!input->deleted){
+        delete[] input->arr;
+        input->deleted = true;
+    }
+}
 // Only reads 2 files at a time to lower memory usage
-cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = false){
-
+vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = false){
+    vector<vector<TimeRange>> result;
     int renewIndex = -1;
     RawAudio audioList[2]; ChromaArr chroma[2];
     int channels, sample_rate;
@@ -169,7 +181,8 @@ cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, boo
             ASSERT(channels == audioList[k].channels, "Tracks must have the same number of channels");
             ASSERT(sample_rate == audioList[k].sample_rate, "Tracks must have the same sample rate");
         }
-
+        cout << audioList[0].filename << " " << audioList[1].filename << endl;
+        //THIS SEGFAULTS
         int startShift = getCommonPrefix(audioList[0], audioList[1]); ASSERT(startShift!=-1, "Audio files are the same");
         int endShift = getCommonSuffix(audioList[0], audioList[1]);
         double startShiftsec = (double) startShift/sample_rate; double endShiftsec = (double) endShift/sample_rate;
@@ -179,10 +192,9 @@ cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, boo
             if(renewIndex==k || renewIndex<0){
                 ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, sample_rate);
                 chromaprint_start(ctx, sample_rate, channels);
-                chromaprint_feed(ctx, (audioList[k].arr + startShift*channels), audioList[k].length - (startShift+endShift)*channels);
+                chromaprint_feed(ctx, audioList[k].arr + startShift*channels, audioList[k].length - (startShift+endShift)*channels);
                 chromaprint_finish(ctx);
-                if(renewIndex==k || (renewIndex<0 && k==0))
-                    freeAudio(audioList[k]);
+                freeRawAudio(&audioList[(renewIndex+1)%2]);
                 if(delay<0){
                     delay = chromaprint_get_delay(ctx);
                     item_duration = chromaprint_get_item_duration(ctx);
@@ -190,7 +202,7 @@ cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, boo
                 ASSERT(delay == chromaprint_get_delay(ctx), "Delay Mismatch\n");
                 ASSERT(item_duration == chromaprint_get_item_duration(ctx), "Item Duration Mismatch\n");
                 
-                chroma[k]=(struct ChromaArr){nullptr, 0};
+                chroma[k]=(struct ChromaArr){nullptr, 0, false};
                 chromaprint_get_raw_fingerprint(ctx, &chroma[k].arr, &chroma[k].size);
                 chromaprint_free(ctx);
             }
@@ -202,7 +214,7 @@ cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, boo
         uint32_t * merged = new uint32_t[combinedLen];
         std::copy(chroma[0].arr, chroma[0].arr + chroma[0].size, merged);
         std::copy(chroma[1].arr, chroma[1].arr + chroma[1].size, merged + offset);
-        delete[] chroma[(renewIndex+1)%2].arr;
+        freeChromaArr(&chroma[(renewIndex+1)%2]);
 
         int max; int* compressed; uint32_t* rank_to_val;
         std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
@@ -302,16 +314,30 @@ cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, boo
             outputRanges[i].push_back((struct TimeRange){audioList[i].lengthSec - endShiftsec, audioList[i].lengthSec});
         }
         
+        // if(renewIndex<0){
+        //     co_yield outputRanges[0];
+        //     co_yield outputRanges[1];
+        // }
+        // else{
+        //     co_yield outputRanges[renewIndex];
+        // }
         if(renewIndex<0){
-            co_yield outputRanges[0];
-            co_yield outputRanges[1];
+            result.push_back(outputRanges[0]);
+            result.push_back(outputRanges[1]);
         }
         else{
-            co_yield outputRanges[renewIndex];
+            result.push_back(outputRanges[renewIndex]);
         }
-
         renewIndex = (renewIndex+1)%2;
     }
+
+    for(int i=0;i<2;i++){
+        freeRawAudio(&audioList[i]);
+        freeChromaArr(&chroma[i]);
+    }
+
+
+    return result;
 }
 
 /*
