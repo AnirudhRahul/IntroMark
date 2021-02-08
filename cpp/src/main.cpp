@@ -8,7 +8,7 @@
 #include <map>
 #include <vector>
 #include <cstring>
-#include <experimental/coroutine>
+#include <coroutine>
 #include <generator.hpp>
 
 using std::cout; using std::endl; using std::sort; using std::tuple; using std::vector;
@@ -26,11 +26,6 @@ using std::cout; using std::endl; using std::sort; using std::tuple; using std::
 #else
 #   define ASSERT(condition, message) do { } while (false)
 #endif
-
-struct ChromaArr{
-    uint32_t* arr;
-    int size;
-};
 
 tuple<int*, uint32_t*, int> compress(uint32_t* arr, int size){
     uint32_t* sorted = new uint32_t[size];
@@ -125,15 +120,11 @@ RawAudio audioFileToArr(char * path){
         }
     }
 
-    // for(TimeRange cur: silentRanges){
-    //     cout << cur.start << " to " << cur.end << endl;
-    // }
-    // cout << "\n\n";
-
     return (struct RawAudio){arr, silentRanges, path, sample_rate, channels, samples*channels, (double)samples/sample_rate};
 }
 void freeAudio(RawAudio input){
     delete[] input.arr;
+    input.silence.clear();
 }
 
 int getCommonPrefix(RawAudio audioA, RawAudio audioB){
@@ -141,6 +132,7 @@ int getCommonPrefix(RawAudio audioA, RawAudio audioB){
         if(audioA.arr[i]!=audioB.arr[i])
             return i/audioA.channels;
     }
+    return -1;
 }
 int getCommonSuffix(RawAudio audioA, RawAudio audioB){
     int tailA = audioA.length-1; int tailB = audioB.length-1;
@@ -151,6 +143,11 @@ int getCommonSuffix(RawAudio audioA, RawAudio audioB){
     return len/audioA.channels;
 }
 
+
+struct ChromaArr{
+    uint32_t* arr;
+    int size;
+};
 // Only reads 2 files at a time to lower memory usage
 cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = false){
 
@@ -305,13 +302,13 @@ cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, boo
             outputRanges[i].push_back((struct TimeRange){audioList[i].lengthSec - endShiftsec, audioList[i].lengthSec});
         }
         
-        if(renewIndex<0){
-            co_yield outputRanges[0];
-            co_yield outputRanges[1];
-        }
-        else{
-            co_yield outputRanges[renewIndex];
-        }
+        // if(renewIndex<0){
+        //     co_yield outputRanges[0];
+        //     co_yield outputRanges[1];
+        // }
+        // else{
+        //     co_yield outputRanges[renewIndex];
+        // }
 
         renewIndex = (renewIndex+1)%2;
     }
@@ -355,6 +352,7 @@ int main(int argc, char* argv[])
     }
 
     int index = 0;
+    // for(vector<TimeRange> a:findSubstrings(pathList, verbose)){}
     for(vector<TimeRange> common : findSubstrings(pathList, verbose)){
         cout << pathList[index] << endl;
         for(TimeRange cur:common)
