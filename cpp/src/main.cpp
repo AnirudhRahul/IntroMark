@@ -302,13 +302,13 @@ cppcoro::generator<vector<TimeRange>> findSubstrings(vector<char*> pathList, boo
             outputRanges[i].push_back((struct TimeRange){audioList[i].lengthSec - endShiftsec, audioList[i].lengthSec});
         }
         
-        // if(renewIndex<0){
-        //     co_yield outputRanges[0];
-        //     co_yield outputRanges[1];
-        // }
-        // else{
-        //     co_yield outputRanges[renewIndex];
-        // }
+        if(renewIndex<0){
+            co_yield outputRanges[0];
+            co_yield outputRanges[1];
+        }
+        else{
+            co_yield outputRanges[renewIndex];
+        }
 
         renewIndex = (renewIndex+1)%2;
     }
