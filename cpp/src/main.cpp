@@ -237,7 +237,8 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
             return (double) in * item_duration / sample_rate;
         };
 
-        int threshold = (int) (toSec(1));
+        int threshold = 0;
+        cout << "THRESH" << threshold << endl;
         vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, chroma[0].size, threshold);
         delete[] suffixArr;
         delete[] lcpArr;
@@ -245,7 +246,21 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
         
         int delay_item = delay/item_duration;
         int mergeThreshold = 5*delay_item;
-        int offsetThreshold = std::max(2, (int)(0.1 * sample_rate / item_duration));
+        int offsetThreshold = std::max(2, (int)(0.25 * sample_rate / item_duration));
+        
+        
+        for(int i=0;i<125;i++){
+            common_substring_list.push_back((struct CommonSubArr){
+                common_substring_list.back().startA + delay_item/26,
+                common_substring_list.back().startB + delay_item/26,
+                0
+            });
+        }
+        cout << "OLD NEW LEN " << common_substring_list.size() << " " << common_substring_list.back().startA << endl;
+        for(int i=0;i<common_substring_list.size();i++){
+            cout << common_substring_list[i].startA << endl;
+        }
+
         for(int i=common_substring_list.size()-1;i>0;i--){
             CommonSubArr next = common_substring_list[i]; 
             for(int k=i-1; k>=0; k--){
@@ -292,7 +307,7 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
                 continue;
             }
         }
-
+        double delay_sec = (double)delay/sample_rate;
         vector<TimeRange> outputRanges[2];
         for(int i=0;i<2;i++)
             outputRanges[i].push_back((struct TimeRange){0, startShiftsec}); 
@@ -300,18 +315,30 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
         for(CommonSubArr common: common_substring_list){
             TimeRange curA = (struct TimeRange){
                 startShiftsec + toSec(common.startA),
-                startShiftsec + toSec(common.startA + common.length) + 8
+                startShiftsec + toSec(common.startA + common.length) + delay_sec * 1
             };
             outputRanges[0].push_back(curA);
 
             TimeRange curB = (struct TimeRange){
                 startShiftsec + toSec(common.startB - offset),
-                startShiftsec + toSec(common.startB - offset + common.length) + 8
+                startShiftsec + toSec(common.startB - offset + common.length) + delay_sec * 1
             };
             outputRanges[1].push_back(curB);
         }
+
+        double secondMergeThreshold = delay_sec;
+        cout << "SEC " << secondMergeThreshold << endl; 
         for(int i=0;i<2;i++){
             outputRanges[i].push_back((struct TimeRange){audioList[i].lengthSec - endShiftsec, audioList[i].lengthSec});
+            sort(outputRanges[i].begin(), outputRanges[i].end(), sortByStart);
+            for(int k=outputRanges[i].size()-1; k>0; k--){
+                TimeRange cur = outputRanges[i][k-1]; TimeRange next = outputRanges[i][k];
+                if(next.start - cur.end <= secondMergeThreshold){
+                    outputRanges[i][k-1].end = next.end;
+                    outputRanges[i].erase(outputRanges[i].begin()+k);
+                }
+
+            }
         }
         
         // if(renewIndex<0){
