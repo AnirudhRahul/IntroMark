@@ -248,15 +248,18 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
         int mergeThreshold = 5*delay_item;
         int offsetThreshold = std::max(2, (int)(0.25 * sample_rate / item_duration));
         
-        
+        if(common_substring_list.size()>0)
         for(int i=0;i<125;i++){
             common_substring_list.push_back((struct CommonSubArr){
-                common_substring_list.back().startA + delay_item/26,
-                common_substring_list.back().startB + delay_item/26,
+                common_substring_list.back().startA + delay_item/30,
+                common_substring_list.back().startB + delay_item/30,
                 0
             });
         }
-        cout << "OLD NEW LEN " << common_substring_list.size() << " " << common_substring_list.back().startA << endl;
+
+
+
+        cout << "OLD NEW LEN " << common_substring_list.size() << endl;
         for(int i=0;i<common_substring_list.size();i++){
             cout << common_substring_list[i].startA << endl;
         }
