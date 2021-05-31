@@ -41,12 +41,15 @@ cmake -D CMAKE_C_COMPILER=gcc-8 -D CMAKE_CXX_COMPILER=g++-8 -DFFT_LIB=fftw3 ..
 
 
 
-
-
 Then build and run the binary with:
 ```
 make && ./IntroMark
 ```
+
+
+The binary can be used from the command line with the following format
+
+```./Intromark file1 file2```
 
 
 # How to compile
