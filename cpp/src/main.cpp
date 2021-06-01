@@ -408,17 +408,12 @@ int main(int argc, char* argv[])
     }
 
     int index = 0;
-    // for(vector<TimeRange> a:findSubstrings(pathList, verbose)){}
     for(vector<TimeRange> common : findSubstrings(pathList, verbose)){
         cout << pathList[index] << endl;
         for(TimeRange cur:common)
             cout << cur.start << " to " << cur.end << endl;
         index++;
     }
-    cout << "PROCESSED " << index;
 
-    // const char* path1 = "../../test_audio/hori1.wav";
-    // const char* path2 = "../../test_audio/hori3.wav";
-    
     return 0;
 }
