@@ -188,11 +188,35 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
         double startShiftsec = (double) startShift/sample_rate; double endShiftsec = (double) endShift/sample_rate;
         cout << "START Shift " << startShiftsec << endl << "END Shift " << endShiftsec << endl;
         
+        cout << "Starting Chromaprint\n";
+        int last_percent_reported = 0;
+        double progress = 0;
+        int totalLen = 0;
         for(int k=0; k<2; k++){
+            totalLen+= audioList[k].length - (startShift+endShift)*channels;
+        }
+
+         for(int k=0; k<2; k++){
             if(renewIndex==k || renewIndex<0){
                 ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, sample_rate);
                 chromaprint_start(ctx, sample_rate, channels);
-                chromaprint_feed(ctx, audioList[k].arr + startShift*channels, audioList[k].length - (startShift+endShift)*channels);
+                int16_t *start = audioList[k].arr + startShift*channels;
+                int audioLen = audioList[k].length - (startShift+endShift)*channels;
+                int chunk_size = 1000 * channels;
+                // Feed and track progress
+                for(int i=0; i<audioLen/chunk_size; i++){
+                    chromaprint_feed(ctx, start, chunk_size);
+                    start+=chunk_size;
+                    progress += (1.0 * chunk_size) / totalLen;
+                    if(progress*100 > last_percent_reported){
+                        last_percent_reported = (int)(progress*100)+1;
+                        cout << "\rProgress: " << last_percent_reported << "% ";
+                        cout.flush();
+                    }
+                }
+                if(audioLen % chunk_size!=0){
+                    chromaprint_feed(ctx, start, audioLen % chunk_size);
+                }
                 chromaprint_finish(ctx);
                 freeRawAudio(&audioList[(renewIndex+1)%2]);
                 if(delay<0){
@@ -207,7 +231,7 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
                 chromaprint_free(ctx);
             }
         }
-        cout << "Chromaprint done!\n";
+        cout << "\nDone\n";
 
         int combinedLen = chroma[0].size + chroma[1].size + 1;
         int offset = chroma[0].size + 1;
