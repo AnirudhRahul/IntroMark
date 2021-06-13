@@ -35,3 +35,5 @@
 cpp/build
 gitignored
 test_audio
+.vscode/
+.DS_Store
