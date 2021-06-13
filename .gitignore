@@ -37,3 +37,4 @@ gitignored
 test_audio
 .vscode/
 .DS_Store
+cpp/xcode
