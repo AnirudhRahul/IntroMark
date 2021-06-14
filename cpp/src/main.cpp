@@ -102,11 +102,19 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
         }
         cout << audioList[0].filename << " " << audioList[1].filename << endl;
         //THIS SEGFAULTS
-        int startShift = getCommonPrefix(audioList[0], audioList[1]); ASSERT(startShift!=-1, "Audio files are the same");
+        int startShift = getCommonPrefix(audioList[0], audioList[1]); 
+        ASSERT(!(audioList[0].length==audioList[1].length && audioList[0].length==startShift), "Audio files are the same");
         int endShift = getCommonSuffix(audioList[0], audioList[1]);
         double startShiftsec = (double) startShift/sample_rate; double endShiftsec = (double) endShift/sample_rate;
-        cout << "START Shift " << startShiftsec << endl << "END Shift " << endShiftsec << endl;
-        
+        if(verbose) cout << "START Shift " << startShiftsec << endl << "END Shift " << endShiftsec << endl;
+        // At this size  chromaprint would give you better accuracy than raw wav matching
+        if(startShiftsec>16){
+            startShift = 0; startShiftsec = 0;
+        }
+        if(endShiftsec>16){
+            endShift = 0; endShiftsec = 0;
+        }
+
         cout << "Starting Chromaprint\n";
         int last_percent_reported = 0;
         double progress = 0;
@@ -164,14 +172,14 @@ vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = 
 
         // Sentinel in between the 2 strings
         compressed[chroma[0].size] = 0;
-        cout << "Finished compressing\n";
+        if(verbose) cout << "Finished compressing\n";
         int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
-        cout << "Made suffix array\n";
+        if(verbose) cout << "Made suffix array of length " << combinedLen << endl;
         int* rankArr = create_rank_arr(suffixArr, combinedLen);
         // lcp in range from [1, combinedLen)
         int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
         delete[] rankArr;
-        cout << "Made LCP array\n";
+        if(verbose) cout << "Made LCP array\n";
 
         auto compareIndices = [compressed, rank_to_val](int a, int b) {
             return compare_gray_codes(rank_to_val[compressed[a]], rank_to_val[compressed[b]]);
@@ -346,7 +354,7 @@ int main(int argc, char* argv[])
     }
 
     if(pathList.size()<2){
-        cout << "Not enough paths specified";
+        cout << "Not enough paths specified\n";
         return EXIT_FAILURE;
     }
 
