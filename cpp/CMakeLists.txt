@@ -17,6 +17,11 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
+add_library(suffix
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/large-alphabet-suffix-array/src/karkkainen_sanders.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/large-alphabet-suffix-array/src/karkkainen_sanders.hpp"
+)
+
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
@@ -28,4 +33,5 @@ set(INCLUDES
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} chromaprint)
+target_link_libraries(${PROJECT_NAME} chromaprint suffix)
+
