@@ -16,14 +16,13 @@ endif()
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/libs/large-alphabet-suffix-array/*.cpp")
+
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 set(INCLUDES 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
-
     ${DEPENDENCIES_HEADERS}
 )
 

@@ -1,6 +1,6 @@
 #include <chromaprint.h>
 #include <audio/RawAudio.hpp>
-#include <karkkainen_sanders.hpp>
+#include <../libs/large-alphabet-suffix-array/src/karkkainen_sanders.hpp>
 #include <linear_longest_substring.hpp>
 #include <iostream>
 #include <math.h>
