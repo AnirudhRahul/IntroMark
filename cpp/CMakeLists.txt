@@ -15,7 +15,7 @@ endif()
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
-file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*")
 
 add_library(suffix
     "${CMAKE_CURRENT_SOURCE_DIR}/libs/large-alphabet-suffix-array/src/karkkainen_sanders.cpp"
