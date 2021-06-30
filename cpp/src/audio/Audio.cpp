@@ -12,19 +12,19 @@ Audio::Audio(){
     filename = "NULL";
 }
 
-Audio::Audio(char *path){
+Audio::Audio(char *path, int f, int dur, int c, int w){
     filename=path;
-    auto chromaFilename = fs::path(filename).replace_extension("chroma1").string();
-    if(fs::exists(chromaFilename)){
-        cout << "Reading from chroma dump: "<<chromaFilename<<"\n";
-        std::ifstream fstream(chromaFilename, std::ios_base::binary);
-        fstream.read((char*)(this), sizeof(Audio));
-        chroma = new uint32_t[chromaLength];
-        fstream.read((char*)(chroma), sizeof(uint32_t)*chromaLength);
-        filename = chromaFilename.c_str();
-        fstream.close();
-        return;
-    }
+//    auto chromaFilename = fs::path(filename).replace_extension("chroma1").string();
+//    if(fs::exists(chromaFilename)){
+//        cout << "Reading from chroma dump: "<<chromaFilename<<"\n";
+//        std::ifstream fstream(chromaFilename, std::ios_base::binary);
+//        fstream.read((char*)(this), sizeof(Audio));
+//        chroma = new uint32_t[chromaLength];
+//        fstream.read((char*)(chroma), sizeof(uint32_t)*chromaLength);
+//        filename = chromaFilename.c_str();
+//        fstream.close();
+//        return;
+//    }
     
     AudioFile<float> audioFile;
     if(!audioFile.load(path)){
@@ -36,7 +36,17 @@ Audio::Audio(char *path){
     samples = audioFile.getNumSamplesPerChannel();
     lengthSec = (double)samples/sample_rate;
     
-    ChromaprintContext *ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, sample_rate);
+    cout << "Sample rate: " << sample_rate << "\n";
+
+    ChromaprintContext *ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, //algo
+                                              sample_rate, //sample rate
+                                              f, // frame_size
+                                              f - dur, // frame overlap
+                                              c, // classifier
+                                              w // classifier window size
+                                              );
+    delay = chromaprint_get_delay(ctx);
+    item_dur = chromaprint_get_item_duration(ctx);
     chromaprint_start(ctx, sample_rate, 1);
     int chunk_size = 1024;
     int16_t* buffer = new int16_t[chunk_size];
@@ -71,12 +81,12 @@ Audio::Audio(char *path){
     chromaprint_get_raw_fingerprint(ctx, &chroma, &chromaLength);
     chromaprint_free(ctx);
     
-    std::ofstream fstream(chromaFilename, std::ios_base::binary | std::ios_base::out);
-    fstream.write((char*)(this), sizeof(Audio));
-    fstream.write((char*)chroma, sizeof(uint32_t)*chromaLength);
-    fstream.flush();
-    fstream.close();
-    cout << "Saved to file: "<<chromaFilename<<"\n";
+//    std::ofstream fstream(chromaFilename, std::ios_base::binary | std::ios_base::out);
+//    fstream.write((char*)(this), sizeof(Audio));
+//    fstream.write((char*)chroma, sizeof(uint32_t)*chromaLength);
+//    fstream.flush();
+//    fstream.close();
+//    cout << "Saved to file: "<<chromaFilename<<"\n";
 }
 
 Audio::~Audio(){

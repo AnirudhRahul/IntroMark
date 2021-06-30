@@ -19,9 +19,9 @@
 using namespace chromaprint;
 
 struct ChromaprintContextPrivate {
-	ChromaprintContextPrivate(int algorithm, int sample_rate)
+	ChromaprintContextPrivate(int algorithm, int sample_rate, int frame_size, int frame_overlap, int classifier, int size)
 		: algorithm(algorithm),
-		  fingerprinter(CreateFingerprinterConfiguration(algorithm, sample_rate)) {}
+		  fingerprinter(CreateFingerprinterConfiguration(algorithm, sample_rate, frame_size, frame_overlap, classifier, size)) {}
 	int algorithm;
 	Fingerprinter fingerprinter;
 	FingerprintCompressor compressor;
@@ -53,9 +53,9 @@ const char *chromaprint_get_version(void)
 	return version_str;
 }
 
-ChromaprintContext *chromaprint_new(int algorithm, int sample_rate)
+ChromaprintContext *chromaprint_new(int algorithm, int sample_rate, int frame_size, int frame_overlap, int classifier, int size)
 {
-	return new ChromaprintContextPrivate(algorithm, sample_rate);
+	return new ChromaprintContextPrivate(algorithm, sample_rate, frame_size, frame_overlap, classifier, size);
 }
 
 void chromaprint_free(ChromaprintContext *ctx)

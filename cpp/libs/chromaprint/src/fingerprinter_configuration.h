@@ -177,10 +177,10 @@ public:
 class FingerprinterConfigurationTest5 : public FingerprinterConfigurationTest2
 {
 public:
-	FingerprinterConfigurationTest5();
+	FingerprinterConfigurationTest5(int frame_size, int frame_overlap, int classifier, int size);
 };
 
-inline FingerprinterConfiguration *CreateFingerprinterConfiguration(int algorithm, int sample_rate)
+inline FingerprinterConfiguration *CreateFingerprinterConfiguration(int algorithm, int sample_rate, int frame_size, int frame_overlap, int classifier, int size)
 {
 	DEFAULT_SAMPLE_RATE = sample_rate;
 	switch (algorithm) {
@@ -193,7 +193,7 @@ inline FingerprinterConfiguration *CreateFingerprinterConfiguration(int algorith
 	case CHROMAPRINT_ALGORITHM_TEST4:
 		return new FingerprinterConfigurationTest4();
 	case CHROMAPRINT_ALGORITHM_TEST5:
-		return new FingerprinterConfigurationTest5();
+		return new FingerprinterConfigurationTest5(frame_size, frame_overlap, classifier, size);
 	}
 	return 0;
 }

@@ -101,13 +101,22 @@ FingerprinterConfigurationTest4::FingerprinterConfigurationTest4()
 	set_silence_threshold(50);
 }
 
-FingerprinterConfigurationTest5::FingerprinterConfigurationTest5()
+FingerprinterConfigurationTest5::FingerprinterConfigurationTest5(int frame_size, int frame_overlap, int classifier, int size)
 {
 	// set_classifiers(kClassifiersTest3, 16);
 	// set_filter_coefficients(kChromaFilterCoefficients, kChromaFilterSize);
 	// set_interpolate(true);
 
-	set_classifiers(kClassifiersTest2, 16);
+	if(classifier==1){
+		set_classifiers(kClassifiersTest1, size);
+	}
+	else if(classifier==2){
+		set_classifiers(kClassifiersTest2, size);
+	}
+	else{
+		set_classifiers(kClassifiersTest3, size);
+	}
+
 	set_filter_coefficients(kChromaFilterCoefficients, kChromaFilterSize);
 	set_interpolate(false);
 

@@ -112,7 +112,7 @@ CHROMAPRINT_API const char *chromaprint_get_version(void);
  *
  * @return ctx Chromaprint context pointer
  */
-CHROMAPRINT_API ChromaprintContext *chromaprint_new(int algorithm, int sample_rate);
+CHROMAPRINT_API ChromaprintContext *chromaprint_new(int algorithm, int  sample_rate, int frame_size, int rame_overlap, int classifier, int size);
 
 /**
  * Deallocate the Chromaprint context.
