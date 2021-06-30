@@ -14,6 +14,7 @@ inline bool sortByStart(TimeRange a, TimeRange b){return a.start < b.start;}
 // all audio is converted to mono
 struct Audio{
     Audio(char* path);
+    Audio();
     ~Audio();
     uint32_t* chroma;
     int chromaLength;
@@ -23,9 +24,5 @@ struct Audio{
     int samples;
     double lengthSec;
 };
-
- void freeAudio(Audio* input);
-//Audio audioFileToArr(char * path);
-
 
 #endif

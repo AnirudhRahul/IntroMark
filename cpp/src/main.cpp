@@ -74,15 +74,47 @@ double compare_gray_codes(uint32_t a, uint32_t b){
 // Only reads 2 files at a time to lower memory usage
 vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = false){
     vector<vector<TimeRange>> result;
-    int renewIndex = -1;
-    Audio audioList[2] = {Audio(pathList[0]), Audio(pathList[1])};
-
-    int delay=-1; int item_duration=-1;
+    Audio *audio[2] = {new Audio(), new Audio(pathList[0])};
     
-    //Initiliaze first file in the list
-//    audioList[0] = audioFileToArr(pathList[0]);
-    int sample_rate = audioList[0].sample_rate;
-    int channels = 1;
+    for(int pathIndex=1; pathIndex < pathList.size(); pathIndex++){
+        delete audio[0];
+        audio[0] = audio[1];
+        audio[1] = new Audio(pathList[pathIndex]);
+        
+        int combinedLen = audio[0]->chromaLength + audio[1]->chromaLength + 1;
+        int offset = audio[0]->chromaLength + 1;
+        uint32_t * merged = new uint32_t[combinedLen];
+        std::copy(audio[0]->chroma, audio[0]->chroma + audio[0]->chromaLength, merged);
+        std::copy(audio[1]->chroma, audio[1]->chroma + audio[1]->chromaLength, merged + offset);
+        
+        int max; int* compressed; uint32_t* rank_to_val;
+        std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
+        
+        // Sentinel in between the 2 strings
+        compressed[audio[0]->chromaLength] = 0;
+        if(verbose) cout << "Finished compressing\n";
+        int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
+        if(verbose) cout << "Made suffix array of length " << combinedLen << endl;
+        int* rankArr = create_rank_arr(suffixArr, combinedLen);
+        // lcp in range from [1, combinedLen)
+        int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
+        delete[] rankArr;
+        if(verbose) cout << "Made LCP array\n";
+        vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, audio[0]->chromaLength, 1);
+        delete[] suffixArr;
+        delete[] lcpArr;
+        
+        cout << "Common Substrings found " << common_substring_list.size() << endl;
+    }
+    
+    delete audio[0];
+    delete audio[1];
+//
+//    int delay=-1; int item_duration=-1;
+//
+//    //Initiliaze first file in the list
+//    int sample_rate = audioList[0].sample_rate;
+//    int channels = 1;
     
 
 //    for(int pathIndex=1; pathIndex < pathList.size(); pathIndex++){

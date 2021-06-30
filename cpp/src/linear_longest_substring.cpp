@@ -75,5 +75,3 @@ vector<CommonSubArr> longest_common_substring(int *suffixArr, int* lcpArr, int s
     sort(substrings.begin(), substrings.end(), compareByStart);
     return substrings;
 }
-
-
