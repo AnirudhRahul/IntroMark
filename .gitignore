@@ -34,7 +34,7 @@
 # Build directory
 cpp/build
 gitignored
-test_audio
+test_audio/*.wav
 .vscode/
 .DS_Store
 cpp/xcode
