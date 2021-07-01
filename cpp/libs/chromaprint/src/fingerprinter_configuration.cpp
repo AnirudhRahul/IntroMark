@@ -120,7 +120,7 @@ FingerprinterConfigurationTest5::FingerprinterConfigurationTest5(int frame_size,
 	set_filter_coefficients(kChromaFilterCoefficients, kChromaFilterSize);
 	set_interpolate(false);
 
-	set_frame_size(kDefaultFrameSize);
-	set_frame_overlap(kDefaultFrameSize - 6000);
+	set_frame_size(frame_size);
+	set_frame_overlap(frame_overlap);
 }
 

@@ -9,6 +9,7 @@
 #include <map>
 #include <vector>
 #include <cstring>
+#include <csv_file.h>
 
 
 using std::cout; using std::endl; using std::sort; using std::tuple; using std::vector;
@@ -70,89 +71,140 @@ double compare_gray_codes(uint32_t a, uint32_t b){
     return matches/16;
 }
 
-
+const int SAMPLE_RATE=48000;
 // Only reads 2 files at a time to lower memory usage
 vector<vector<TimeRange>> findSubstrings(vector<char*> pathList, bool verbose = false){
     vector<vector<TimeRange>> result;
-    int frames[] = {1024*1024, 44100/5, 44100/3, 44100/2, 44100*1, 44100*2, 44100*3, 44100*4, 44100*5, 44100*6, 44100*7, 44100*8, 44100*9};
+    int frameS[] = {SAMPLE_RATE*8,SAMPLE_RATE*4,  SAMPLE_RATE*6,  SAMPLE_RATE*9, SAMPLE_RATE*12, 1024*1024, 1024*32, 1024*16, SAMPLE_RATE/5, SAMPLE_RATE/3, SAMPLE_RATE/2, SAMPLE_RATE*1, SAMPLE_RATE*2, SAMPLE_RATE*3};
+    int durS[] = {SAMPLE_RATE/8, SAMPLE_RATE/10, SAMPLE_RATE/6, SAMPLE_RATE/4, SAMPLE_RATE/2, SAMPLE_RATE, 500, 1000, 2000, 3000};
+    int clasS[] = {1, 2};
+    int wS[] = {16};
+    csvfile csv("/Users/anirudhrahul/Workspace/IntroMark/HoriOUT.csv");
+    csv << "Frame Size" << "Item Dur" << "Classifier" << "W" << "OP" <<"RAND"<<"AFT"<< "ITEM SEC" << "DELAY SEC"<< endrow;
     
-    int frame_size=44100*8; int dur = 6000; int classifier=2; int w=16;
-    Audio *audio[2] = {new Audio(), new Audio(pathList[0],frame_size,dur,classifier,w)};
-    
-    int startA=1*44100; int endA=90*44100;
-    int startB=234*44100; int endB=323*44100;
-    int len = endA-startA;
+    for(int w : wS)
+    for(int classifier : clasS)
+    for(int dur : durS)
+    for(int frame_size : frameS){
+        if(dur > frame_size)
+            continue;
+        Audio *audio[2] = {new Audio(), new Audio(pathList[0],frame_size,dur,classifier,w)};
+        
+        int startA=94*SAMPLE_RATE; int endA=180*SAMPLE_RATE;
+        int startB=152*SAMPLE_RATE; int endB=238*SAMPLE_RATE;
+        int len = endA-startA;
 
-    
 
-    ASSERT(endA-startA==endB-startB, "lenghts must be same");
-    
-    for(int pathIndex=1; pathIndex < pathList.size(); pathIndex++){
-        delete audio[0];
-        audio[0] = audio[1];
-        audio[1] = new Audio(pathList[pathIndex], frame_size, dur, classifier, w);
-        int item_dur = audio[0]->item_dur;
-        int delay = audio[0]->delay;
-        ASSERT(item_dur==(audio[1]->item_dur) && delay==(audio[1]->delay), "SAME SETTINGS?");
-        int startIndexA = startA/item_dur;
-        int startIndexB = startB/item_dur;
-        int cLen = (len)/item_dur;
-        double matches=0; int total=0;
-        for(int i=startIndexA; i<startIndexA+cLen; i++){
-            matches += compare_gray_codes(audio[0]->chroma[i], audio[1]->chroma[i+startIndexB-startIndexA]);
-          total++;
+        ASSERT(endA-startA==endB-startB, "lenghts must be same");
+        
+        for(int pathIndex=1; pathIndex < pathList.size(); pathIndex++){
+            delete audio[0];
+            audio[0] = audio[1];
+            audio[1] = new Audio(pathList[pathIndex], frame_size, dur, classifier, w);
+                        
+            int item_dur = audio[0]->item_dur;
+            int delay = audio[0]->delay;
+            cout << "ITEM DUR: " << 1.0 * item_dur / SAMPLE_RATE << "s\n";
+            cout << "DELAY: " << 1.0 * delay / SAMPLE_RATE << "s\n";
+
+            ASSERT(item_dur==(audio[1]->item_dur) && delay==(audio[1]->delay), "SAME SETTINGS?");
+            int startIndexA = startA/item_dur;
+            int startIndexB = startB/item_dur;
+            int cLen = (len)/item_dur;
+            
+            cout << "START A: " << audio[0]->chroma[startIndexA] << endl;
+            cout << "START B: " << audio[0]->chroma[startIndexB] <<" "<<startIndexB<< endl;
+
+            for(int i=0;i<=20*SAMPLE_RATE/item_dur;i++){
+                int pos = startIndexB + i;
+                if(audio[0]->chroma[startIndexA]==audio[1]->chroma[pos]){
+                    startIndexB = pos;
+                    break;
+                }
+                int neg = startIndexB-i;
+                if(audio[0]->chroma[startIndexA]==audio[1]->chroma[neg]){
+                    startIndexB = neg;
+                    break;
+                }
+            }
+
+            if(audio[0]->chroma[startIndexA]!=audio[1]->chroma[startIndexB]){
+                cout << "NO MATCH FOUND";
+            }
+            else{
+                cout << "START B: " << audio[0]->chroma[startIndexB] << " "<<startIndexB<< endl;
+            }
+            
+            
+            double matches=0; int total=0;
+            for(int i=startIndexA; i<startIndexA+cLen; i++){
+                matches += compare_gray_codes(audio[0]->chroma[i], audio[1]->chroma[i+startIndexB-startIndexA]);
+              total++;
+            }
+            csv << frame_size << dur << classifier << w;
+            csv << matches / total;
+            cout << "OP SCORE: " << matches / total << endl;
+            
+            int randA=12*SAMPLE_RATE/item_dur; int randB=345*SAMPLE_RATE/item_dur;
+            int randLen = 400*SAMPLE_RATE/item_dur;
+            matches=0; total=0;
+            for(int i=randA; i<randA+randLen; i++){
+                matches += compare_gray_codes(audio[0]->chroma[i], audio[1]->chroma[i+randB-randA]);
+              total++;
+            }
+            cout << "RAND SCORE: " << matches / total << endl;
+            csv << matches / total;
+
+            int aftA=endA/item_dur; int aftB=endB/item_dur;
+            int aftLen=5*SAMPLE_RATE/item_dur;
+            matches=0; total=0;
+            for(int i=aftA; i<aftA+aftLen; i++){
+                matches += compare_gray_codes(audio[0]->chroma[i], audio[1]->chroma[i+aftB-aftA]);
+              total++;
+            }
+            cout << "AFT SCORE: " << matches / total << endl;
+            csv << matches / total;
+            csv << 1.0 * item_dur / SAMPLE_RATE;
+            csv << 1.0 * delay / SAMPLE_RATE;
+
+            csv << endrow;
+            csv.flush();
+
+            delete audio[0];
+            delete audio[1];
         }
-        cout << "OP SCORE: " << matches / total << endl;
-        
-        int randA=12*44100/item_dur; int randB=345*44100/item_dur;
-        int randLen = 400*44100/item_dur;
-        matches=0; total=0;
-        for(int i=randA; i<randA+randLen; i++){
-            matches += compare_gray_codes(audio[0]->chroma[i], audio[1]->chroma[i+randB-randA]);
-          total++;
-        }
-        cout << "RAND SCORE: " << matches / total << endl;
-        
-        int aftA=90*44100/item_dur; int aftB=323*44100/item_dur;
-        int aftLen=5*44100/item_dur;
-        matches=0; total=0;
-        for(int i=aftA; i<aftA+aftLen; i++){
-            matches += compare_gray_codes(audio[0]->chroma[i], audio[1]->chroma[i+aftB-aftA]);
-          total++;
-        }
-        cout << "AFT SCORE: " << matches / total << endl;
-        
 
-
-        
-//        int combinedLen = audio[0]->chromaLength + audio[1]->chromaLength + 1;
-//        int offset = audio[0]->chromaLength + 1;
-//        uint32_t * merged = new uint32_t[combinedLen];
-//        std::copy(audio[0]->chroma, audio[0]->chroma + audio[0]->chromaLength, merged);
-//        std::copy(audio[1]->chroma, audio[1]->chroma + audio[1]->chromaLength, merged + offset);
-//
-//        int max; int* compressed; uint32_t* rank_to_val;
-//        std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
-//
-//        // Sentinel in between the 2 strings
-//        compressed[audio[0]->chromaLength] = 0;
-//        if(verbose) cout << "Finished compressing\n";
-//        int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
-//        if(verbose) cout << "Made suffix array of length " << combinedLen << endl;
-//        int* rankArr = create_rank_arr(suffixArr, combinedLen);
-//        // lcp in range from [1, combinedLen)
-//        int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
-//        delete[] rankArr;
-//        if(verbose) cout << "Made LCP array\n";
-//        vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, audio[0]->chromaLength, 1);
-//        delete[] suffixArr;
-//        delete[] lcpArr;
-//
-//        cout << "Common Substrings found " << common_substring_list.size() << endl;
     }
     
-    delete audio[0];
-    delete audio[1];
+
+
+        
+    //            int combinedLen = audio[0]->chromaLength + audio[1]->chromaLength + 1;
+    //            int offset = audio[0]->chromaLength + 1;
+    //            uint32_t * merged = new uint32_t[combinedLen];
+    //            std::copy(audio[0]->chroma, audio[0]->chroma + audio[0]->chromaLength, merged);
+    //            std::copy(audio[1]->chroma, audio[1]->chroma + audio[1]->chromaLength, merged + offset);
+    //
+    //            int max; int* compressed; uint32_t* rank_to_val;
+    //            std::tie(compressed, rank_to_val, max) = compress(merged, combinedLen);
+    //
+    //            // Sentinel in between the 2 strings
+    //            compressed[audio[0]->chromaLength] = 0;
+    //            if(verbose) cout << "Finished compressing\n";
+    //            int* suffixArr = karkkainen_sanders_sa(compressed, combinedLen, max);
+    //            if(verbose) cout << "Made suffix array of length " << combinedLen << endl;
+    //            int* rankArr = create_rank_arr(suffixArr, combinedLen);
+    //            // lcp in range from [1, combinedLen)
+    //            int* lcpArr =  create_lcp_arr(suffixArr, rankArr, compressed, combinedLen);
+    //            delete[] rankArr;
+    //            if(verbose) cout << "Made LCP array\n";
+    //            vector<CommonSubArr> common_substring_list = longest_common_substring(suffixArr, lcpArr, combinedLen, audio[0]->chromaLength, 3);
+    //            delete[] suffixArr;
+    //            delete[] lcpArr;
+    //
+    //            cout << "Common Substrings found " << common_substring_list.size() << endl;
+    
+
 //
 //    int delay=-1; int item_duration=-1;
 //
@@ -377,7 +429,7 @@ int main(int argc, char* argv[])
         cout << "Not enough paths specified\n";
         return EXIT_FAILURE;
     }
-
+    
     int index = 0;
     for(vector<TimeRange> common : findSubstrings(pathList, verbose)){
         cout << pathList[index] << endl;
