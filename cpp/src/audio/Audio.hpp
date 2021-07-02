@@ -16,7 +16,7 @@ struct Audio{
     Audio(char* path);
     Audio();
     ~Audio();
-    uint32_t* chroma;
+    int* chroma;
     int chromaLength;
     int item_duration;
     int delay;
