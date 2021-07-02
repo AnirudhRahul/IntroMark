@@ -14,7 +14,7 @@ Audio::Audio(){
 
 Audio::Audio(char *path){
     filename=path;
-    auto chromaFilename = fs::path(filename).replace_extension("chroma1").string();
+    auto chromaFilename = fs::path(filename).replace_extension("chroma4").string();
     if(fs::exists(chromaFilename)){
         cout << "Reading from chroma dump: "<<chromaFilename<<"\n";
         std::ifstream fstream(chromaFilename, std::ios_base::binary);
@@ -38,6 +38,9 @@ Audio::Audio(char *path){
     
     ChromaprintContext *ctx = chromaprint_new(CHROMAPRINT_ALGORITHM_TEST5, sample_rate);
     chromaprint_start(ctx, sample_rate, 1);
+    item_duration = chromaprint_get_item_duration(ctx);
+    delay = chromaprint_get_delay(ctx);
+    
     int chunk_size = 1024;
     int16_t* buffer = new int16_t[chunk_size];
     float sum = 0;

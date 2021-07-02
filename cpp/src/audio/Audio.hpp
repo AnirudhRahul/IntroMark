@@ -18,6 +18,8 @@ struct Audio{
     ~Audio();
     uint32_t* chroma;
     int chromaLength;
+    int item_duration;
+    int delay;
     const char* filename;
     int sample_rate;
     int channels;
